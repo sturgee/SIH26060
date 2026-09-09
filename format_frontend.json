@@ -1,0 +1,388 @@
+{
+  "timestamp": "2026-09-09T21:18:54Z",
+  "station": {
+    "id": "BHARATI",
+    "name": "Bharati",
+    "location": {
+      "latitude": -69.413,
+      "longitude": 76.187
+    }
+  },
+  "environment": {
+    "external_temperature": {
+      "value": -24.9,
+      "unit": "C",
+      "source": "simulated"
+    },
+    "wind_speed": {
+      "value": 31.5,
+      "unit": "km/h",
+      "source": "simulated"
+    },
+    "wind_direction": {
+      "value": 220.1,
+      "unit": "deg",
+      "source": "simulated"
+    },
+    "atmospheric_pressure": {
+      "value": 982.6,
+      "unit": "hPa",
+      "source": "simulated"
+    },
+    "relative_humidity": {
+      "value": 70.7,
+      "unit": "%",
+      "source": "simulated"
+    },
+    "solar_irradiance": {
+      "value": 143.4,
+      "unit": "W/m2",
+      "source": "simulated"
+    },
+    "visibility": {
+      "value": 4.7,
+      "unit": "km",
+      "source": "simulated"
+    }
+  },
+  "internal_conditions": {
+    "main_building": {
+      "average_temperature": {
+        "value": 17.6,
+        "unit": "C"
+      },
+      "humidity": {
+        "value": 42.3,
+        "unit": "%"
+      },
+      "zones": [
+        {
+          "id": "living_quarters",
+          "name": "Living Quarters",
+          "temperature": 19.3,
+          "humidity": 41.5
+        },
+        {
+          "id": "laboratory",
+          "name": "Laboratory",
+          "temperature": 20.1,
+          "humidity": 43.2
+        },
+        {
+          "id": "control_room",
+          "name": "Control Room",
+          "temperature": 21.1,
+          "humidity": 38.4
+        },
+        {
+          "id": "storage",
+          "name": "Storage",
+          "temperature": 10,
+          "humidity": 46.8
+        }
+      ]
+    },
+    "sheds": [
+      {
+        "id": "vehicle_shed",
+        "name": "Vehicle Shed",
+        "temperature": 4,
+        "humidity": 51.1
+      },
+      {
+        "id": "workshop",
+        "name": "Workshop",
+        "temperature": 7.7,
+        "humidity": 49.2
+      }
+    ],
+    "other_regions": [
+      {
+        "id": "fuel_handling",
+        "name": "Fuel Handling Area",
+        "temperature": -11.3
+      }
+    ]
+  },
+  "energy": {
+    "generators": [
+      {
+        "id": "GEN-01",
+        "name": "Diesel Generator 1",
+        "status": "running",
+        "output_power": 183.4,
+        "rated_power": 250,
+        "load_percent": 73.4,
+        "fuel_remaining": 6239.96,
+        "fuel_unit": "L",
+        "fuel_consumption_rate": 41.3,
+        "fuel_consumption_unit": "L/h",
+        "engine_temperature": 79
+      },
+      {
+        "id": "GEN-02",
+        "name": "Diesel Generator 2",
+        "status": "standby",
+        "output_power": 0,
+        "rated_power": 250,
+        "load_percent": 0,
+        "fuel_remaining": 7100,
+        "fuel_unit": "L",
+        "fuel_consumption_rate": 0,
+        "fuel_consumption_unit": "L/h",
+        "engine_temperature": 12.2
+      }
+    ],
+    "battery": {
+      "state_of_charge": 72.4,
+      "capacity": 500,
+      "capacity_unit": "kWh",
+      "charge_rate": 0,
+      "discharge_rate": 18.2
+    },
+    "consumption": {
+      "total_power": 201.6,
+      "unit": "kW",
+      "hvac": {
+        "heating": 61.3,
+        "unit": "kW"
+      },
+      "appliances": [
+        {
+          "id": "HVAC-01",
+          "name": "Main Heating System",
+          "power": 61.3,
+          "unit": "kW",
+          "status": "on"
+        },
+        {
+          "id": "LAB-01",
+          "name": "Laboratory Equipment",
+          "power": 32.5,
+          "unit": "kW",
+          "status": "on"
+        },
+        {
+          "id": "WTR-01",
+          "name": "Water Pump",
+          "power": 14.2,
+          "unit": "kW",
+          "status": "on"
+        },
+        {
+          "id": "COMMS-01",
+          "name": "Communications",
+          "power": 8.7,
+          "unit": "kW",
+          "status": "on"
+        },
+        {
+          "id": "LIGHT-01",
+          "name": "Lighting",
+          "power": 11.8,
+          "unit": "kW",
+          "status": "on"
+        },
+        {
+          "id": "OTHER",
+          "name": "Other Loads",
+          "power": 73.1,
+          "unit": "kW",
+          "status": "on"
+        }
+      ]
+    }
+  },
+  "water": {
+    "fresh_water": {
+      "remaining": 6190.08,
+      "capacity": 10000,
+      "unit": "L",
+      "consumption_rate": 238,
+      "consumption_rate_unit": "L/day"
+    },
+    "meltwater_reservoir": {
+      "remaining": 18500,
+      "capacity": 25000,
+      "unit": "L"
+    },
+    "waste_water": {
+      "level": 3200,
+      "capacity": 7000,
+      "unit": "L"
+    }
+  },
+  "food": {
+    "total_remaining": 4170.62,
+    "unit": "kg",
+    "daily_consumption": 75,
+    "daily_consumption_unit": "kg/day",
+    "estimated_days_remaining": 55.6
+  },
+  "logistics": {
+    "fuel": {
+      "total_remaining": 13298.33,
+      "unit": "L",
+      "daily_consumption": 1000,
+      "daily_consumption_unit": "L/day"
+    },
+    "next_resupply": {
+      "scheduled_at": "2026-09-22T00:00:00Z",
+      "fuel_delivery": 20000,
+      "fuel_delivery_unit": "L",
+      "food_delivery": 5000,
+      "food_delivery_unit": "kg",
+      "water_delivery": 0
+    },
+    "personnel": {
+      "current": 43,
+      "capacity": 60
+    }
+  },
+  "infrastructure": {
+    "systems": [
+      {
+        "id": "HEAT-01",
+        "name": "Main Heating System",
+        "status": "operational",
+        "health": 94
+      },
+      {
+        "id": "WTR-01",
+        "name": "Water Treatment",
+        "status": "operational",
+        "health": 88
+      },
+      {
+        "id": "COMMS-01",
+        "name": "Satellite Communications",
+        "status": "operational",
+        "health": 97
+      }
+    ],
+    "equipment_alerts": []
+  },
+  "connectivity": {
+    "link_status": "online",
+    "latency_ms": 840,
+    "bandwidth_kbps": 512,
+    "last_successful_sync": "2026-09-08T02:59:41Z",
+    "buffered_messages": 0
+  },
+  "predictions": {
+    "generated_at": "2026-09-09T21:18:54Z",
+    "steps": 5,
+    "series": {
+      "energy.generators[0].engine_temperature": {
+        "every_seconds": 1,
+        "values": [
+          78.9,
+          78.9,
+          78.9,
+          78.9,
+          78.9
+        ]
+      },
+      "energy.generators[0].fuel_consumption_rate": {
+        "every_seconds": 1,
+        "values": [
+          41.47,
+          41.47,
+          41.47,
+          41.47,
+          41.47
+        ]
+      },
+      "energy.generators[0].fuel_remaining": {
+        "every_seconds": 1,
+        "values": [
+          6239.96,
+          6239.96,
+          6239.96,
+          6239.96,
+          6239.96
+        ]
+      },
+      "energy.generators[0].output_power": {
+        "every_seconds": 1,
+        "values": [
+          184.25,
+          184.25,
+          184.25,
+          184.25,
+          184.25
+        ]
+      },
+      "energy.generators[1].engine_temperature": {
+        "every_seconds": 1,
+        "values": [
+          12.36,
+          12.36,
+          12.36,
+          12.36,
+          12.36
+        ]
+      },
+      "energy.generators[1].fuel_consumption_rate": {
+        "every_seconds": 1,
+        "values": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "energy.generators[1].fuel_remaining": {
+        "every_seconds": 1,
+        "values": [
+          7100,
+          7100,
+          7100,
+          7100,
+          7100
+        ]
+      },
+      "energy.generators[1].output_power": {
+        "every_seconds": 1,
+        "values": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "environment.external_temperature.value": {
+        "every_seconds": 60,
+        "values": [
+          -25,
+          -25,
+          -25.01,
+          -25.02,
+          -25.02
+        ]
+      },
+      "environment.relative_humidity.value": {
+        "every_seconds": 3600,
+        "values": [
+          67.54,
+          65.68,
+          63.82,
+          61.96,
+          60.1
+        ]
+      },
+      "environment.wind_speed.value": {
+        "every_seconds": 5,
+        "values": [
+          32.89,
+          32.89,
+          32.89,
+          32.89,
+          32.9
+        ]
+      }
+    }
+  }
+}
