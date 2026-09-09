@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MQTT to WebSocket</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 2rem;
+            max-width: 600px;
+            margin: 0 auto;
+            background: #121212;
+            color: #fff;
+        }
+
+        #messages {
+            background: #1e1e1e;
+            padding: 1rem;
+            border-radius: 8px;
+            min-height: 200px;
+            font-family: monospace;
+            list-style-type: none;
+            margin-top: 1rem;
+        }
+
+        li {
+            border-bottom: 1px solid #333;
+            padding: 0.75rem 0;
+            white-space: pre-wrap;
+        }
+
+        .status {
+            color: #4ade80;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Live MQTT Feed</h1>
+    <div class="status" id="status">
+        Connecting to WebSocket...
+    </div>
+    <ul id="messages"></ul>
+
+    <script>
+        const protocol = location.protocol === "https:" ? "wss" : "ws";
+        const ws = new WebSocket(`${protocol}://${location.host}/ws`);
+
+        const messagesList = document.getElementById("messages");
+        const statusDiv = document.getElementById("status");
+
+        ws.onopen = () => {
+            statusDiv.textContent = "Connected to WebSocket";
+        };
+
+        ws.onclose = () => {
+            statusDiv.textContent = "Disconnected from WebSocket";
+            statusDiv.style.color = "#f87171";
+        };
+
+        ws.onmessage = (event) => {
+            const item = document.createElement("li");
+
+            try {
+                item.textContent = JSON.stringify(
+                    JSON.parse(event.data),
+                    null,
+                    2
+                );
+            } catch {
+                item.textContent = event.data;
+            }
+
+            messagesList.prepend(item);
+        };
+    </script>
+</body>
+</html>
