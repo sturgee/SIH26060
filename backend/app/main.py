@@ -1,9 +1,71 @@
 import asyncio
 import json
+from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 import aiomqtt
+from sqlalchemy import DateTime, String, Float, JSON, select
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+# --- Database Configuration ---
+DATABASE_URL = "sqlite+aiosqlite:///./telemetry.db"
+engine = create_async_engine(DATABASE_URL, echo=False)
+async_session = async_sessionmaker(engine, expire_on_commit=False)
+
+class Base(DeclarativeBase):
+    pass
+
+class TelemetryLog(Base):
+    __tablename__ = "telemetry_logs"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    station_id: Mapped[str] = mapped_column(String(50), index=True)
+    
+    # Frequently queried metrics extracted for indexing and fast analytics
+    external_temp: Mapped[float | None] = mapped_column(Float, nullable=True)
+    total_power_kw: Mapped[float | None] = mapped_column(Float, nullable=True)
+    generator_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    
+    # Store the complete raw payload for deep nested access
+    payload: Mapped[dict] = mapped_column(JSON)
+
+async def init_db():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+async def save_telemetry(payload: dict):
+    """Parses key metrics and stores the telemetry document asynchronously."""
+    try:
+        # Extract ISO timestamp (e.g., '2026-09-08T03:00:00Z')
+        raw_ts = payload.get("timestamp")
+        ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00")) if raw_ts else datetime.now(timezone.utc)
+        
+        station_id = payload.get("station", {}).get("id", "UNKNOWN")
+        ext_temp = payload.get("environment", {}).get("external_temperature", {}).get("value")
+        total_power = payload.get("energy", {}).get("consumption", {}).get("total_power")
+        
+        # Get primary generator status
+        generators = payload.get("energy", {}).get("generators", [])
+        gen_status = generators[0].get("status") if generators else None
+
+        record = TelemetryLog(
+            timestamp=ts,
+            station_id=station_id,
+            external_temp=ext_temp,
+            total_power_kw=total_power,
+            generator_status=gen_status,
+            payload=payload,
+        )
+
+        async with async_session() as session:
+            session.add(record)
+            await session.commit()
+            
+    except Exception as e:
+        print(f"Error saving to database: {e}")
 
 # --- WebSocket Connection Manager ---
 class ConnectionManager:
@@ -39,7 +101,13 @@ async def mqtt_listener():
                 
                 async for message in client.messages:
                     payload = message.payload.decode()
-                    print(f"MQTT Received: {payload}")
+
+                    try:
+                        data = json.loads(payload)
+                        # Save to DB asynchronously
+                        await save_telemetry(data)
+                    except json.JSONDecodeError:
+                        print("Failed to decode JSON payload")
                     # Forward the raw JSON string directly to all connected WebSockets
                     await manager.broadcast(payload)
                     
@@ -50,6 +118,7 @@ async def mqtt_listener():
 # --- FastAPI Lifespan ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await init_db()
     # Start the MQTT background task when the server boots
     task = asyncio.create_task(mqtt_listener())
     yield
@@ -118,8 +187,26 @@ async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
         while True:
-            # The server must call receive() to keep the connection open 
-            # and detect client disconnects, even if it only sends data.
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+
+@app.get("/api/telemetry/recent")
+async def get_recent_telemetry(limit: int = 10):
+    """API endpoint to query recent telemetry entries from the DB."""
+    async with async_session() as session:
+        result = await session.execute(
+            select(TelemetryLog).order_by(TelemetryLog.timestamp.desc()).limit(limit)
+        )
+        logs = result.scalars().all()
+        return [
+            {
+                "id": log.id,
+                "timestamp": log.timestamp,
+                "station_id": log.station_id,
+                "external_temp": log.external_temp,
+                "total_power_kw": log.total_power_kw,
+                "payload": log.payload,
+            }
+            for log in logs
+        ]

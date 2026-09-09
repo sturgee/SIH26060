@@ -2,3 +2,6 @@ fastapi
 uvicorn[standard]
 pydantic
 paho-mqtt
+aiomqtt
+sqlalchemy
+aiosqlite
