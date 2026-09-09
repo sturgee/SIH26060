@@ -1,11 +1,11 @@
 from pathlib import Path
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from sqlalchemy import select
 
 from .database import async_session
-from .models import TelemetryLog
+from .models import TelemetryDocument, TelemetryValue
 from .websocket_manager import ConnectionManager
 
 
@@ -37,21 +37,64 @@ async def get_recent_telemetry(limit: int = 10):
 
     async with async_session() as session:
         result = await session.execute(
-            select(TelemetryLog)
-            .order_by(TelemetryLog.timestamp.desc())
+            select(TelemetryDocument)
+            .order_by(TelemetryDocument.timestamp.desc())
             .limit(limit)
         )
 
-        logs = result.scalars().all()
+        documents = result.scalars().all()
 
         return [
             {
-                "id": log.id,
-                "timestamp": log.timestamp,
-                "station_id": log.station_id,
-                "external_temp": log.external_temp,
-                "total_power_kw": log.total_power_kw,
-                "payload": log.payload,
+                "id": document.id,
+                "timestamp": document.timestamp,
+                "received_at": document.received_at,
+                "station_id": document.station_id,
+                "payload": document.payload,
             }
-            for log in logs
+            for document in documents
         ]
+
+
+@router.get("/api/telemetry/{document_id}")
+async def get_telemetry_document(document_id: int):
+    async with async_session() as session:
+        document_result = await session.execute(
+            select(TelemetryDocument).where(
+                TelemetryDocument.id == document_id
+            )
+        )
+        document = document_result.scalar_one_or_none()
+
+        if document is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Telemetry document not found",
+            )
+
+        values_result = await session.execute(
+            select(TelemetryValue)
+            .where(TelemetryValue.document_id == document_id)
+            .order_by(TelemetryValue.path)
+        )
+
+        values = values_result.scalars().all()
+
+        return {
+            "id": document.id,
+            "station_id": document.station_id,
+            "timestamp": document.timestamp,
+            "received_at": document.received_at,
+            "payload": document.payload,
+            "values": [
+                {
+                    "path": value.path,
+                    "type": value.value_type,
+                    "text": value.value_text,
+                    "number": value.value_number,
+                    "boolean": value.value_boolean,
+                    "json": value.value_json,
+                }
+                for value in values
+            ],
+        }
