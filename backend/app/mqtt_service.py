@@ -4,14 +4,17 @@ from datetime import datetime, timezone
 from typing import Any
 
 import aiomqtt
+from sqlalchemy import select
 
 from .database import async_session
+from .forecasting import build_predictions
 from .models import TelemetryDocument, TelemetryValue
 from .websocket_manager import ConnectionManager
 
 
 MQTT_HOST = "localhost"
 MQTT_TOPIC = "antarctic/station/BHARATI"
+HISTORY_LIMIT = 200
 
 
 def flatten_json(
@@ -20,16 +23,6 @@ def flatten_json(
 ):
     """
     Converts nested JSON into queryable key/value records.
-
-    Example:
-    {
-        "energy": {
-            "power": 120
-        }
-    }
-
-    Becomes:
-    energy.power = 120
     """
 
     if isinstance(value, dict):
@@ -94,15 +87,18 @@ def parse_timestamp(value: str | None) -> datetime:
         return datetime.now(timezone.utc)
 
 
-async def save_telemetry(payload: dict[str, Any]) -> None:
-    timestamp = parse_timestamp(payload.get("timestamp"))
-    received_at = datetime.now(timezone.utc)
-
-    station_id = (
+def get_station_id(payload: dict[str, Any]) -> str:
+    return (
         payload.get("station", {}).get("id")
         or payload.get("station_id")
         or "UNKNOWN"
     )
+
+
+async def save_telemetry(payload: dict[str, Any]) -> None:
+    timestamp = parse_timestamp(payload.get("timestamp"))
+    received_at = datetime.now(timezone.utc)
+    station_id = get_station_id(payload)
 
     async with async_session() as session:
         document = TelemetryDocument(
@@ -126,11 +122,69 @@ async def save_telemetry(payload: dict[str, Any]) -> None:
         await session.commit()
 
 
+async def load_numeric_history(
+    station_id: str,
+) -> dict[str, list[tuple[datetime, float]]]:
+    async with async_session() as session:
+        query = (
+            select(
+                TelemetryValue.path,
+                TelemetryDocument.timestamp,
+                TelemetryValue.value_number,
+            )
+            .join(
+                TelemetryDocument,
+                TelemetryDocument.id == TelemetryValue.document_id,
+            )
+            .where(
+                TelemetryDocument.station_id == station_id,
+                TelemetryValue.value_type == "number",
+                TelemetryValue.value_number.is_not(None),
+            )
+            .order_by(
+                TelemetryValue.path,
+                TelemetryDocument.timestamp,
+            )
+        )
+
+        result = await session.execute(query)
+        rows = result.all()
+
+    history: dict[str, list[tuple[datetime, float]]] = {}
+
+    for path, timestamp, value in rows:
+        values = history.setdefault(path, [])
+
+        if len(values) < HISTORY_LIMIT:
+            values.append((timestamp, float(value)))
+        else:
+            values.pop(0)
+            values.append((timestamp, float(value)))
+
+    return history
+
+
+async def process_telemetry(
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    await save_telemetry(payload)
+
+    station_id = get_station_id(payload)
+    history = await load_numeric_history(station_id)
+    predictions = build_predictions(history, steps=5)
+
+    outgoing_payload = dict(payload)
+    outgoing_payload["predictions"] = predictions
+
+    return outgoing_payload
+
+
 async def mqtt_listener(manager: ConnectionManager) -> None:
     while True:
         try:
             async with aiomqtt.Client(MQTT_HOST) as client:
                 await client.subscribe(MQTT_TOPIC)
+
                 print(
                     f"Connected to MQTT broker. "
                     f"Subscribed to '{MQTT_TOPIC}'"
@@ -145,8 +199,18 @@ async def mqtt_listener(manager: ConnectionManager) -> None:
                         print("Failed to decode JSON payload")
                         continue
 
-                    await save_telemetry(data)
-                    await manager.broadcast(raw_payload)
+                    try:
+                        outgoing_payload = await process_telemetry(data)
+                    except Exception as error:
+                        print(f"Failed to process telemetry: {error}")
+                        continue
+
+                    await manager.broadcast(
+                        json.dumps(
+                            outgoing_payload,
+                            separators=(",", ":"),
+                        )
+                    )
 
         except asyncio.CancelledError:
             raise
