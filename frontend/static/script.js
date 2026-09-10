@@ -1,264 +1,90 @@
 let currentData = null;
 let history = [];
 
-const MAX_CHART_POINTS = 7;
+const MAX_CHART_POINTS = 60;
 const chartInstances = {};
+let dataWatchdog = null;
 
 const $ = (id) => document.getElementById(id);
 
 function number(value, digits = 1) {
-  return value === undefined || value === null
-    ? "—"
-    : Number(value).toFixed(digits);
+  return Number.isFinite(Number(value))
+    ? Number(value).toFixed(digits)
+    : "—";
 }
 
-function percent(value, capacity) {
-  return capacity ? Math.min(100, value / capacity * 100) : 0;
+function showDataWarning() {
+  $("dataWarning")?.classList.add("visible");
 }
 
-// function drawChart(element, values, options = {}) {
-//   const id = element.id;
+function hideDataWarning() {
+  $("dataWarning")?.classList.remove("visible");
+}
 
-//   const validValues = values
-//     .map(Number)
-//     .filter(Number.isFinite)
-//     .slice(-MAX_CHART_POINTS);
+function resetDataWatchdog() {
+  hideDataWarning();
+  clearTimeout(dataWatchdog);
+  dataWatchdog = setTimeout(showDataWarning, 1000);
+}
 
-//   if (!validValues.length) {
-//     if (chartInstances[id]) {
-//       chartInstances[id].destroy();
-//       delete chartInstances[id];
-//     }
+function timestampOf(item) {
+  return item.timestamp || item.payload?.timestamp;
+}
 
-//     element.innerHTML = `<div class="chart-empty">No data</div>`;
-//     return;
-//   }
+function timeLabel(value) {
+  if (!value) return "";
 
-//   // 1. Correctly extract times from the telemetry history array
-//   const categories = history
-//     .slice(-MAX_CHART_POINTS)
-//     .map(item => {
-//       if (!item.timestamp) return '';
-//       const date = new Date(item.timestamp);
-//       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-//     });
+  return new Date(value).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
 
-//   const series = [{
-//     name: options.name || "Value",
-//     data: validValues,
-//   }];
+function chartOptions(categories) {
+  return {
+    categories,
+    labels: {
+      show: true,
+      rotate: -35,
+      hideOverlappingLabels: true,
+      style: {
+        colors: "#8da3ba",
+        fontSize: "11px",
+      },
+    },
+    axisBorder: { show: false },
+    axisTicks: { show: false },
+    tickAmount: Math.min(6, categories.length),
+  };
+}
 
-//   // 2. Safely push axis updates during runtime updates
-//  if (chartInstances[id]) {
-//     chartInstances[id].updateOptions({
-//       xaxis: { 
-//         categories: categories,
-//         tickAmount: 4 // ⭐ Make sure this is added here too!
-//       },
-//       yaxis: {
-//         tickAmount: 3 // ⭐ Make sure this is added here too!
-//       }
-//     }, false, false);
+function updateLineChart(element, values, options = {}) {
+  if (!element) return;
 
-//     chartInstances[id].updateSeries(series, false);
-//     return;
-//   }
+  const records = history.slice(-MAX_CHART_POINTS);
+  const categories = records.map((item) => timeLabel(timestampOf(item)));
 
-//   element.innerHTML = "";
+  const data = values
+    .slice(-MAX_CHART_POINTS)
+    .map((value) => Number.isFinite(Number(value)) ? Number(value) : null);
 
-//   // 3. Initialize ApexCharts with strict color and display visibility rules
-//   const chart = new ApexCharts(element, {
-//     chart: {
-//       type: options.type || "area",
-//       height: options.height || 130,
-//       toolbar: { show: false },
-//       zoom: { enabled: false },
-//       animations: {
-//         enabled: false,
-//       },
-//       background: "transparent",
-//     },
-//     series,
-//     colors: [options.color || "#56b4ff"],
-//     stroke: {
-//       curve: "smooth",
-//       width: 3,
-//     },
-//     fill: {
-//       type: "gradient",
-//       gradient: {
-//         shadeIntensity: 1,
-//         opacityFrom: 0.35,
-//         opacityTo: 0.03,
-//       },
-//     },
-//     markers: {
-//       size: 0,
-//       hover: { size: 5 },
-//     },
-//     xaxis: {
-//       categories: categories,
-//       type: 'category',
-//       labels: { 
-//         show: true,
-//         style: {
-//           colors: "#8da3ba",
-//           fontSize: "10px"
-//         }
-//       },
-//       axisBorder: { show: false },
-//       axisTicks: { show: false },
-//     },
-//     yaxis: {
-//       labels: {
-//         style: { colors: "#8da3ba" },
-//         formatter: value => Number(value).toFixed(1),
-//       },
-//     },
-//     grid: {
-//       borderColor: "#203650",
-//       strokeDashArray: 4,
-//     },
-//     tooltip: {
-//       theme: "dark",
-//       x: { show: true },
-//       y: {
-//         formatter: value => Number(value).toFixed(2),
-//       },
-//     },
-//     dataLabels: { enabled: false },
-//   });
-
-//   chartInstances[id] = chart;
-//   chart.render();
-// }
-function drawChart(element, values, options = {}) {
-  const id = element.id;
-
-  // 1. Map values and take recent points cleanly
-  const validValues = values
-    .map(Number)
-    .filter(Number.isFinite)
-    .slice(-MAX_CHART_POINTS);
-
-  if (!validValues.length) {
-    if (chartInstances[id]) {
-      chartInstances[id].destroy();
-      delete chartInstances[id];
-    }
+  if (!data.some((value) => value !== null)) {
     element.innerHTML = `<div class="chart-empty">No data</div>`;
     return;
   }
 
-  // 2. Extract RAW UNIX Timestamps (Numbers) for the chart engine
-  const recentHistory = history.slice(-MAX_CHART_POINTS);
-  const chartData = validValues.map((val, idx) => {
-    const historyItem = recentHistory[idx];
-    // Fallback to current time if historical timestamps aren't generated yet
-    const timestamp = historyItem ? new Date(historyItem.timestamp).getTime() : new Date().getTime();
-    return [timestamp, val];
-  });
+  const series = [{
+    name: options.name || "Value",
+    data,
+  }];
 
-  // 3. If chart exists, perform a unified single layout refresh update
-  if (chartInstances[id]) {
-    chartInstances[id].updateSeries([{
-      name: options.name || "Value",
-      data: chartData
-    }], true);
-    return;
-  }
-
-  element.innerHTML = "";
-
-  // 4. Construct the initial chart instance with absolute layout protection
-  const chart = new ApexCharts(element, {
-    chart: {
-      type: options.type || "area",
-      height: options.height || 140, // Increased slightly to give text breathing room
-      toolbar: { show: false },
-      zoom: { enabled: false },
-      animations: { enabled: false },
-      background: "transparent",
-      foreColor: "#8da3ba" // Colors labels globally
-    },
-    series: [{
-      name: options.name || "Value",
-      data: chartData
-    }],
-    colors: [options.color || "#56b4ff"],
-    stroke: { curve: "smooth", width: 3 },
-    fill: {
-      type: "gradient",
-      gradient: { shadeIntensity: 1, opacityFrom: 0.35, opacityTo: 0.03 }
-    },
-    xaxis: {
-      type: 'datetime', // Changed to datetime to activate intelligent text spacing
-      labels: {
-        show: true,
-        style: { fontSize: "10px", colors: "#8da3ba" },
-        datetimeUTC: false, // Uses your local machine time structure
-        format: 'hh:mm:ss TT' // Formats text neatly (e.g., 12:25:31 AM)
-      },
-      axisBorder: { show: false },
-      axisTicks: { show: false }
-    },
-    yaxis: {
-      tickAmount: 3, // Enforces clean, non-stacking vertical gaps
-      labels: {
-        style: { colors: "#8da3ba" },
-        formatter: value => Number(value).toFixed(1)
-      }
-    },
-    grid: { borderColor: "#203650", strokeDashArray: 4 },
-    tooltip: {
-      theme: "dark",
-      x: { format: 'hh:mm:ss TT' }
-    },
-    dataLabels: { enabled: false }
-  });
-
-  chartInstances[id] = chart;
-  chart.render();
-}
-
-
-function drawEnergyChart(element, generators) {
-  const id = element.id;
-
-  const series = generators.map((generator, generatorIndex) => ({
-    name: generator.name || `Generator ${generatorIndex + 1}`,
-    data: history
-      .map(item =>
-        Number(
-          item.payload?.energy?.generators?.[generatorIndex]?.output_power
-        )
-      )
-      .filter(Number.isFinite)
-      .slice(-MAX_CHART_POINTS),
-  }));
-
-  if (!series.some(item => item.data.length)) {
-    generators.forEach((generator, index) => {
-      series[index].data = [
-        Number(generator.output_power) || 0,
-      ];
-    });
-  }
-
-  const categories = history
-    .slice(-MAX_CHART_POINTS)
-    .map(item => {
-      if (!item.timestamp) return '';
-      const date = new Date(item.timestamp);
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    });
-
-  if (chartInstances[id]) {
-    chartInstances[id].updateOptions({
-      xaxis: { categories },
+  if (chartInstances[element.id]) {
+    chartInstances[element.id].updateOptions({
+      xaxis: chartOptions(categories),
     }, false, false);
 
-    chartInstances[id].updateSeries(series, false);
+    chartInstances[element.id].updateSeries(series, false);
     return;
   }
 
@@ -267,12 +93,141 @@ function drawEnergyChart(element, generators) {
   const chart = new ApexCharts(element, {
     chart: {
       type: "area",
-      height: 170,
+      height: options.height || 130,
       toolbar: { show: false },
       zoom: { enabled: false },
-      animations: {
-        enabled: false,
+      animations: { enabled: false },
+      background: "transparent",
+    },
+    series,
+    colors: [options.color || "#56b4ff"],
+    stroke: {
+      curve: "smooth",
+      width: 3,
+    },
+    fill: {
+      type: "gradient",
+      gradient: {
+        opacityFrom: 0.35,
+        opacityTo: 0.03,
       },
+    },
+    markers: {
+      size: 0,
+      hover: { size: 5 },
+    },
+    xaxis: chartOptions(categories),
+    yaxis: {
+      labels: {
+        style: { colors: "#8da3ba" },
+        formatter: (value) => Number(value).toFixed(1),
+      },
+    },
+    grid: {
+      borderColor: "#203650",
+      strokeDashArray: 4,
+    },
+    tooltip: {
+      theme: "dark",
+      x: { show: true },
+    },
+    dataLabels: { enabled: false },
+  });
+
+  chartInstances[element.id] = chart;
+  chart.render();
+}
+
+function valueFrom(item, paths) {
+  for (const path of paths) {
+    let value = item.payload;
+
+    for (const key of path.split(".")) {
+      value = value?.[key];
+    }
+
+    if (Number.isFinite(Number(value))) {
+      return Number(value);
+    }
+  }
+
+  return null;
+}
+
+function renderMetrics(data) {
+  const metrics = $("metrics");
+  if (!metrics) return;
+
+  metrics.innerHTML = [
+    ["⚡", "Power load", `${number(data.energy?.consumption?.total_power)} kW`],
+    ["💧", "Fresh water", `${number(data.water?.fresh_water?.remaining, 0)} L`],
+    ["🍱", "Food supply", `${number(data.food?.estimated_days_remaining)} days`],
+    ["⛽", "Fuel remaining", `${number(data.logistics?.fuel?.total_remaining, 0)} L`],
+    ["👥", "Personnel", data.logistics?.personnel?.current ?? "—"],
+  ].map(([icon, label, value]) => `
+    <div class="metric">
+      <div class="metric-label">${icon} ${label}</div>
+      <div class="metric-value">${value}</div>
+    </div>
+  `).join("");
+}
+
+function renderResources(data) {
+  const container = $("resourceList");
+  if (!container) return;
+
+  const resources = [
+    ["Fuel", data.logistics?.fuel?.total_remaining, "L"],
+    ["Fresh water", data.water?.fresh_water?.remaining, "L"],
+    ["Food", data.food?.total_remaining, "kg"],
+  ];
+
+  container.innerHTML = resources.map(([name, value, unit]) => `
+    <div class="resource-row">
+      <div class="resource-info">
+        <span>${name}</span>
+        <strong>${number(value, 0)} ${unit}</strong>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderEnergy(data) {
+  const energy = data.energy || {};
+  const generators = energy.generators || [];
+  const container = $("energyChart");
+
+  if (!container) return;
+
+  const records = history.slice(-MAX_CHART_POINTS);
+  const categories = records.map((item) => timeLabel(timestampOf(item)));
+
+  const series = generators.map((generator, index) => ({
+    name: generator.name || `Generator ${index + 1}`,
+    data: records.map((item) => {
+      const value = item.payload?.energy?.generators?.[index]?.output_power;
+      return Number.isFinite(Number(value)) ? Number(value) : null;
+    }),
+  }));
+
+  if (!series.length) return;
+
+  if (chartInstances.energyChart) {
+    chartInstances.energyChart.updateOptions({
+      xaxis: chartOptions(categories),
+    }, false, false);
+
+    chartInstances.energyChart.updateSeries(series, false);
+    return;
+  }
+
+  const chart = new ApexCharts(container, {
+    chart: {
+      type: "area",
+      height: 240,
+      toolbar: { show: false },
+      zoom: { enabled: false },
+      animations: { enabled: false },
     },
     series,
     colors: ["#56b4ff", "#a78bfa", "#4ade80"],
@@ -287,127 +242,47 @@ function drawEnergyChart(element, generators) {
         opacityTo: 0.02,
       },
     },
-    markers: {
-      size: 0,
-      hover: { size: 5 },
+    xaxis: chartOptions(categories),
+    yaxis: {
+      labels: {
+        style: { colors: "#8da3ba" },
+        formatter: (value) => `${Number(value).toFixed(0)} kW`,
+      },
     },
     legend: {
       position: "top",
       labels: { colors: "#8da3ba" },
     },
-    xaxis: {
-      categories,
-      labels: { 
-        show: true,
-        style: {
-          colors: "#8da3ba",
-          fontSize: "10px"
-        }
-      },
-      axisBorder: { show: false },
-      axisTicks: { show: false },
-    },
-    yaxis: {
-      labels: {
-        style: { colors: "#8da3ba" },
-        formatter: value => `${Number(value).toFixed(0)} kW`,
-      },
-    },
     grid: {
       borderColor: "#203650",
       strokeDashArray: 4,
     },
-    tooltip: {
-      theme: "dark",
-      y: {
-        formatter: value => `${Number(value).toFixed(1)} kW`,
-      },
-    },
+    tooltip: { theme: "dark" },
     dataLabels: { enabled: false },
   });
 
-  chartInstances[id] = chart;
+  chartInstances.energyChart = chart;
   chart.render();
 }
 
-function renderMetrics(data) {
-  const energy = data.energy || {};
-  const water = data.water?.fresh_water || {};
-  const food = data.food || {};
-  const logistics = data.logistics || {};
-
-  $("metrics").innerHTML = [
-    ["⚡", "Power load", `${number(energy.consumption?.total_power)} kW`],
-    ["⛽", "Fuel remaining", `${number(logistics.fuel?.total_remaining, 0)} L`],
-    ["💧", "Fresh water", `${number(water.remaining, 0)} L`],
-    ["🍱", "Food supply", `${number(food.estimated_days_remaining)} days`],
-    ["👥", "Personnel", `${logistics.personnel?.current ?? "—"} / ${logistics.personnel?.capacity ?? "—"}`],
-  ].map(([icon, label, value]) => `
-    <div class="metric">
-      <div class="metric-label">${icon} ${label}</div>
-      <div class="metric-value">${value}</div>
-    </div>
-  `).join("");
-}
-
-function renderResources(data) {
-  const water = data.water || {};
-  const food = data.food || {};
-  const fuel = data.logistics?.fuel || {};
-
-  const resources = [
-    ["Fuel", fuel.total_remaining, "L", 20000],
-    ["Fresh water", water.fresh_water?.remaining, "L", water.fresh_water?.capacity],
-    ["Meltwater", water.meltwater_reservoir?.remaining, "L", water.meltwater_reservoir?.capacity],
-    ["Food", food.total_remaining, "kg", 5000],
-  ];
-
-  $("resourceList").innerHTML = resources.map(([name, value, unit, capacity]) => `
-    <div class="resource-row">
-      <div class="resource-info">
-        <span>${name}</span>
-        <strong>${number(value, 0)} ${unit}</strong>
-      </div>
-      <div class="progress">
-        <i style="width:${percent(value || 0, capacity)}%"></i>
-      </div>
-    </div>
-  `).join("");
-}
-
-function renderEnergy(data) {
-  const energy = data.energy || {};
-  const generators = energy.generators || [];
-
-  $("batteryValue").textContent =
-    `Battery ${number(energy.battery?.state_of_charge)}%`;
-
-  drawEnergyChart($("energyChart"), generators);
-
-  $("generatorList").innerHTML = generators.map((generator) => `
-    <div>
-      <span>${generator.name}</span>
-      <strong class="${generator.status === "running" ? "good" : ""}">
-        ${generator.status} · ${number(generator.output_power)} kW
-      </strong>
-    </div>
-  `).join("");
-}
-
 function renderHealth(data) {
+  const container = $("healthList");
+  if (!container) return;
+
   const systems = data.infrastructure?.systems || [];
 
-  $("healthList").innerHTML = systems.map((system) => `
+  container.innerHTML = systems.map((system) => `
     <div>
       <span>${system.name}</span>
-      <strong class="${system.health >= 80 ? "good" : "warning"}">
-        ${system.health}% · ${system.status}
-      </strong>
+      <strong>${system.health ?? "—"}% · ${system.status ?? "unknown"}</strong>
     </div>
   `).join("");
 }
 
 function renderConditions(data) {
+  const container = $("conditions");
+  if (!container) return;
+
   const environment = data.environment || {};
 
   const conditions = [
@@ -415,41 +290,30 @@ function renderConditions(data) {
     ["Wind speed", `${number(environment.wind_speed?.value)} km/h`],
     ["Humidity", `${number(environment.relative_humidity?.value)}%`],
     ["Pressure", `${number(environment.atmospheric_pressure?.value)} hPa`],
-    ["Visibility", `${number(environment.visibility?.value)} km`],
-    ["Solar irradiance", `${number(environment.solar_irradiance?.value)} W/m²`],
   ];
 
-  $("conditions").innerHTML = conditions.map(([name, value]) => `
+  container.innerHTML = conditions.map(([label, value]) => `
     <div class="condition">
       <strong>${value}</strong>
-      <span>${name}</span>
+      <span>${label}</span>
     </div>
   `).join("");
 }
 
 function renderLogistics(data) {
-  const logistics = data.logistics || {};
-  const personnel = logistics.personnel || {};
-  const resupply = logistics.next_resupply || {};
+  const container = $("logistics");
+  if (!container) return;
 
-  $("logistics").innerHTML = `
+  const logistics = data.logistics || {};
+
+  container.innerHTML = `
     <div class="logistics-row">
       <span>Personnel</span>
-      <strong>${personnel.current ?? "—"} / ${personnel.capacity ?? "—"}</strong>
+      <strong>${logistics.personnel?.current ?? "—"}</strong>
     </div>
     <div class="logistics-row">
-      <span>Next resupply</span>
-      <strong>${resupply.scheduled_at
-        ? new Date(resupply.scheduled_at).toLocaleDateString()
-        : "—"}</strong>
-    </div>
-    <div class="logistics-row">
-      <span>Fuel delivery</span>
-      <strong>${number(resupply.fuel_delivery, 0)} L</strong>
-    </div>
-    <div class="logistics-row">
-      <span>Food delivery</span>
-      <strong>${number(resupply.food_delivery, 0)} kg</strong>
+      <span>Capacity</span>
+      <strong>${logistics.personnel?.capacity ?? "—"}</strong>
     </div>
   `;
 }
@@ -468,6 +332,18 @@ function render(data) {
     ? new Date(data.timestamp).toLocaleString()
     : "—";
 
+  const records = history.slice(-MAX_CHART_POINTS);
+
+  const temperatures = records.map((item) => valueFrom(item, [
+    "environment.external_temperature.value",
+    "environment.external_temperature",
+  ]));
+
+  const wind = records.map((item) => valueFrom(item, [
+    "environment.wind_speed.value",
+    "environment.wind_speed",
+  ]));
+
   $("temperatureValue").textContent =
     number(data.environment?.external_temperature?.value);
 
@@ -481,66 +357,48 @@ function render(data) {
   renderConditions(data);
   renderLogistics(data);
 
-//   const temperatures = history.map(
-//     item => item.payload?.environment?.external_temperature?.value
-//   ).filter(Number.isFinite);
-
-//   const wind = history.map(
-//     item => item.payload?.environment?.wind_speed?.value
-//   ).filter(Number.isFinite);
-
-//   drawChart($("temperatureChart"), temperatures, {
-//     name: "Temperature",
-//     color: "#fb7185",
-//     height: 110,
-//   });
-
-//   drawChart($("windChart"), wind, {
-//     name: "Wind speed",
-//     color: "#56b4ff",
-//     height: 110,
-//   });
-// }
-const recentHistory = history.slice(-MAX_CHART_POINTS);
-
-  const temperatures = recentHistory.map(
-    item => item.payload?.environment?.external_temperature?.value ?? item.payload?.environment?.value ?? item.payload?.value
-  ).filter(Number.isFinite);
-
-  const wind = recentHistory.map(
-    item => item.payload?.environment?.wind_speed?.value ?? item.payload?.wind_speed?.value ?? item.payload?.value
-  ).filter(Number.isFinite);
-
-  drawChart($("temperatureChart"), temperatures, {
+  updateLineChart($("temperatureChart"), temperatures, {
     name: "Temperature",
     color: "#fb7185",
-    height: 120,
+    height: 170,
   });
 
-  drawChart($("windChart"), wind, {
+  updateLineChart($("windChart"), wind, {
     name: "Wind speed",
     color: "#56b4ff",
-    height: 120,
+    height: 170,
   });
 }
 
 function setConnection(online) {
-  $("connectionDot").classList.toggle("offline", !online);
-  $("connectionText").textContent = online ? "Live connection" : "Disconnected";
+  $("connectionDot")?.classList.toggle("offline", !online);
+  $("connectionText").textContent = online
+    ? "Live connection"
+    : "Disconnected";
 }
 
 function connect() {
   const protocol = location.protocol === "https:" ? "wss" : "ws";
   const socket = new WebSocket(`${protocol}://${location.host}/ws`);
 
-  socket.onopen = () => setConnection(true);
+  socket.onopen = () => {
+    setConnection(true);
+    resetDataWatchdog();
+  };
 
   socket.onmessage = (event) => {
     const message = JSON.parse(event.data);
 
     if (message.type === "initial") {
       history = message.history || [];
-      render(message.latest);
+
+      if (message.latest) {
+        render(message.latest);
+        resetDataWatchdog();
+      } else {
+        showDataWarning();
+      }
+
       return;
     }
 
@@ -549,16 +407,22 @@ function connect() {
       payload: message,
     });
 
-    history = history.slice(-100);
+    history = history.slice(-MAX_CHART_POINTS);
     render(message);
+    resetDataWatchdog();
   };
 
   socket.onclose = () => {
+    clearTimeout(dataWatchdog);
+    showDataWarning();
     setConnection(false);
     setTimeout(connect, 3000);
   };
 
-  socket.onerror = () => socket.close();
+  socket.onerror = () => {
+    showDataWarning();
+    socket.close();
+  };
 }
 
 connect();
