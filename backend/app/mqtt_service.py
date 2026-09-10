@@ -1,5 +1,6 @@
 import asyncio
 import json
+from collections import deque
 from datetime import datetime, timezone
 from typing import Any
 
@@ -15,6 +16,8 @@ from .websocket_manager import ConnectionManager
 MQTT_HOST = "localhost"
 MQTT_TOPIC = "antarctic/station/BHARATI"
 HISTORY_LIMIT = 200
+WIND_HISTORY_LIMIT = 12
+wind_history: deque[float] = deque(maxlen=WIND_HISTORY_LIMIT)
 
 
 def flatten_json(
@@ -191,16 +194,12 @@ async def mqtt_listener(manager: ConnectionManager) -> None:
                 )
 
                 async for message in client.messages:
-                    raw_payload = message.payload.decode()
+                    raw_payload = message.payload.decode("utf-8")
+                    payload = json.loads(raw_payload)
+                    payload = add_environment_summary(payload)
 
                     try:
-                        data = json.loads(raw_payload)
-                    except json.JSONDecodeError:
-                        print("Failed to decode JSON payload")
-                        continue
-
-                    try:
-                        outgoing_payload = await process_telemetry(data)
+                        outgoing_payload = await process_telemetry(payload)
                     except Exception as error:
                         print(f"Failed to process telemetry: {error}")
                         continue

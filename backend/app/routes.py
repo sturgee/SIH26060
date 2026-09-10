@@ -22,7 +22,12 @@ async def get_frontend():
     return TEMPLATE_PATH.read_text(encoding="utf-8")
 
 
-# ... Keep lines 1-25 unchanged ...
+@router.get("/Environment", response_class=HTMLResponse)
+async def environment_page():
+    return (PROJECT_ROOT / "frontend" / "templates" / "Environment.html").read_text(
+        encoding="utf-8"
+    )
+
 
 async def get_initial_telemetry() -> dict:
     async with async_session() as session:
