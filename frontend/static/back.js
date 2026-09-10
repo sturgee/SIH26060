@@ -1,7 +1,7 @@
 let currentData = null;
 let history = [];
 
-const MAX_CHART_POINTS = 20; // Sliding window timeline size
+const MAX_CHART_POINTS = 20; // Rolling viewport window timeline size
 const chartInstances = {};
 
 const $ = (id) => document.getElementById(id);
@@ -12,23 +12,16 @@ function number(value, digits = 1) {
     : Number(value).toFixed(digits);
 }
 
-// ========================================================
-// 1. DYNAMIC APEXCHARTS LOADER & INJECT ENGINE
-// ========================================================
-function loadApexChartsAndRender(callback) {
-  if (window.ApexCharts) {
-    callback();
-    return;
-  }
-  // Inject CDN dynamically if header file script is commented out
-  const script = document.createElement("script");
-  script.src = "https://jsdelivr.net";
-  script.onload = callback;
-  document.head.appendChild(script);
+// Helper utility to strictly find asset matching ID "GEN-01" out of the generators list array
+function findGen01(generatorsList) {
+  if (!Array.isArray(generatorsList)) return null;
+  return generatorsList.find(gen => gen && gen.id === "GEN-01") || generatorsList[0] || null;
 }
 
-// Core rendering blueprint for environmental timeline grids
-function drawChart(element, values, options = {}) {
+// ========================================================
+// 1. GEN-01 ACTUAL CORE LINE ENGINE (LEFT CARD CONTAINER)
+// ========================================================
+function drawActualFuelChart(element, values) {
   const id = element.id;
   const validValues = values.map(Number).filter(Number.isFinite).slice(-MAX_CHART_POINTS);
 
@@ -37,7 +30,7 @@ function drawChart(element, values, options = {}) {
       chartInstances[id].destroy();
       delete chartInstances[id];
     }
-    element.innerHTML = `<div class="chart-empty" style="color:#8da3ba;padding:20px;text-align:center;">No data</div>`;
+    element.innerHTML = `<div class="chart-empty" style="color:#8da3ba;padding:20px;text-align:center;">Waiting for database telemetry...</div>`;
     return;
   }
 
@@ -52,7 +45,7 @@ function drawChart(element, values, options = {}) {
 
   if (chartInstances[id]) {
     chartInstances[id].updateOptions({
-      series: [{ name: options.name || "Value", data: chartData }]
+      series: [{ name: "Live Consumption (GEN-01)", data: chartData }]
     }, false, false);
     return;
   }
@@ -61,7 +54,7 @@ function drawChart(element, values, options = {}) {
   const chart = new ApexCharts(element, {
     chart: {
       type: "area",
-      height: options.height || 140,
+      height: 140, 
       toolbar: { show: false },
       zoom: { enabled: false },
       animations: { enabled: false },
@@ -69,8 +62,8 @@ function drawChart(element, values, options = {}) {
       foreColor: "#8da3ba"
     },
     theme: { mode: "dark" },
-    series: [{ name: options.name || "Value", data: chartData }],
-    colors: [options.color || "#56b4ff"],
+    series: [{ name: "Live Consumption (GEN-01)", data: chartData }],
+    colors: ["#a78bfa"], // Sleek Purple theme targeting fuel performance
     stroke: { curve: "smooth", width: 3 },
     fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.35, opacityTo: 0.03 } },
     xaxis: {
@@ -81,10 +74,10 @@ function drawChart(element, values, options = {}) {
     },
     yaxis: {
       tickAmount: 3,
-      labels: { style: { colors: "#8da3ba" }, formatter: value => Number(value).toFixed(1) }
+      labels: { style: { colors: "#8da3ba" }, formatter: value => `${Number(value).toFixed(1)} L/h` }
     },
     grid: { borderColor: "#203650", strokeDashArray: 4 },
-    tooltip: { theme: "dark", x: { format: 'hh:mm:ss TT' } },
+    tooltip: { theme: "dark", x: { format: 'hh:mm:ss TT' }, y: { formatter: value => `${Number(value).toFixed(1)} L/h` } },
     dataLabels: { enabled: false }
   });
 
@@ -92,31 +85,20 @@ function drawChart(element, values, options = {}) {
   chart.render();
 }
 
-// Custom multi-series renderer comparing tracking variables vs predictive arrays
-function drawEnergyChart(element, predictionData = {}) {
+// ========================================================
+// 2. GEN-01 FORECAST TIMELINE ENGINE (RIGHT CARD CONTAINER)
+// ========================================================
+function drawPredictedFuelChart(element, forecastValues) {
   const id = element.id;
+  const validForecast = forecastValues.map(Number).filter(Number.isFinite);
 
-  // A. Map historic actual wind logs from database streams
-  const actualWindData = history
-    .map(item => Number(item.payload?.environment?.wind_speed?.value ?? item.payload?.wind_speed?.value ?? item.payload?.wind_speed))
-    .filter(Number.isFinite)
-    .slice(-MAX_CHART_POINTS);
+  const series = [{
+    name: "Predicted Consumption (GEN-01)",
+    data: validForecast
+  }];
 
-  const currentWind = currentData?.environment?.wind_speed?.value ?? currentData?.wind_speed?.value ?? currentData?.wind_speed ?? 0;
-  const historicalSeries = actualWindData.length ? actualWindData : [Number(currentWind)];
-
-  // B. Pull upcoming predictive projections lines from prediction matrix maps
-  const windForecastValues = predictionData?.series?.["environment.wind_speed.value"]?.values || 
-                             predictionData?.series?.["wind_speed"]?.values || [];
-  const validForecast = windForecastValues.map(Number).filter(Number.isFinite);
-
-  const series = [
-    { name: " Actual Wind Speed (km/h)", data: historicalSeries },
-    { name: " Predicted Wind Speed (km/h)", data: validForecast }
-  ];
-
-  const maxPoints = Math.max(...series.map(item => item.data.length), 1);
-  const categories = Array.from({ length: maxPoints }, (_, index) => index + 1);
+  const maxPoints = Math.max(validForecast.length, 1);
+  const categories = Array.from({ length: maxPoints }, (_, index) => `Step ${index + 1}`);
 
   if (chartInstances[id]) {
     chartInstances[id].updateOptions({
@@ -130,7 +112,7 @@ function drawEnergyChart(element, predictionData = {}) {
   const chart = new ApexCharts(element, {
     chart: {
       type: "area",
-      height: 170,
+      height: 170, 
       toolbar: { show: false },
       zoom: { enabled: false },
       animations: { enabled: false },
@@ -139,11 +121,10 @@ function drawEnergyChart(element, predictionData = {}) {
     },
     theme: { mode: "dark" },
     series,
-    colors: ["#56b4ff", "#fbbf24"], // Sky Blue actual vs Amber predictive trends
+    colors: ["#fbbf24"], // Vibrant Amber explicitly mapping predictions
     stroke: { curve: "smooth", width: 3 },
     fill: { type: "gradient", gradient: { opacityFrom: 0.25, opacityTo: 0.02 } },
     markers: { size: 0, hover: { size: 5 } },
-    legend: { position: "top", labels: { colors: "#8da3ba" } },
     xaxis: {
       categories,
       labels: { show: true, style: { colors: "#8da3ba", fontSize: "10px" } },
@@ -151,10 +132,10 @@ function drawEnergyChart(element, predictionData = {}) {
       axisTicks: { show: false }
     },
     yaxis: {
-      labels: { style: { colors: "#8da3ba" }, formatter: value => `${Number(value).toFixed(1)} km/h` }
+      labels: { style: { colors: "#8da3ba" }, formatter: value => `${Number(value).toFixed(1)} L/h` }
     },
     grid: { borderColor: "#203650", strokeDashArray: 4 },
-    tooltip: { theme: "dark", y: { formatter: value => `${Number(value).toFixed(1)} km/h` } },
+    tooltip: { theme: "dark", y: { formatter: value => `${Number(value).toFixed(1)} L/h` } },
     dataLabels: { enabled: false }
   });
 
@@ -163,49 +144,55 @@ function drawEnergyChart(element, predictionData = {}) {
 }
 
 // ========================================================
-// 2. WIND TELEMETRY PIPELINE HANDLING
+// 3. TELEMETRY DATA INTERPRETER AND INJECTOR PIPELINE
 // ========================================================
 function render(data) {
   if (!data) return;
   currentData = data;
 
-  // Populate textual parameters safely if components exist inside view layout
+  // Sync Station Title Text Node
   if ($("stationName")) $("stationName").textContent = data.station?.name || "Unknown Station";
-  if ($("stationLocation")) {
-    $("stationLocation").textContent = `${data.station?.location?.latitude ?? "—"}°, ${data.station?.location?.longitude ?? "—"}°`;
+
+  // Isolate current state for exact asset code "GEN-01"
+  const gen01Data = findGen01(data.energy?.generators || []);
+  const liveFuelValue = gen01Data ? gen01Data.fuel_consumption_rate : 0;
+
+  // Extract prediction sequence matrix target key
+  const predictions = data.predictions || {};
+  
+  // Directly targeting the specific JSON sequence path string key for generator 0
+  const fuelForecastValues = predictions.series?.["energy.generators[0].fuel_consumption_rate"]?.values || 
+                             predictions.series?.["energy.generators.fuel_consumption_rate"]?.values || [];
+
+  // Inject text metric details into the specific HTML text elements rows
+  if ($("windValue")) $("windValue").textContent = number(liveFuelValue);
+  if ($("act_value")) $("act_value").textContent = `${number(liveFuelValue)} L/h`;
+  if ($("pre_value")) {
+    const nextForecastValue = fuelForecastValues[0]; // Fetch first upcoming step prediction index value
+    $("pre_value").textContent = nextForecastValue !== undefined ? `${number(nextForecastValue)} L/h` : "—";
   }
 
-  // Update dynamic real-time label node
-  const activeWindVal = data.environment?.wind_speed?.value ?? data.wind_speed?.value ?? data.wind_speed;
-  if ($("windValue")) $("windValue").textContent = number(activeWindVal);
+  // A. Plot real-time actual GEN-01 fuel data directly into Left Column container (#windChart)
+  if ($("windChart")) {
+    const recentHistory = history.slice(-MAX_CHART_POINTS);
+    const actualFuelHistory = recentHistory
+      .map(item => {
+        const targetGen = findGen01(item.payload?.energy?.generators || []);
+        return targetGen ? targetGen.fuel_consumption_rate : null;
+      })
+      .filter(val => val !== null && Number.isFinite(val));
 
-  // Extract core predictions maps securely
-  const predictions = data.predictions || {};
+    drawActualFuelChart($("windChart"), actualFuelHistory.length ? actualFuelHistory : [Number(liveFuelValue)]);
+  }
 
-  loadApexChartsAndRender(() => {
-    // A. Draw Isolated Environmental Trend timeline graph
-    if ($("windChart")) {
-      const recentHistory = history.slice(-MAX_CHART_POINTS);
-      const windHistoryData = recentHistory.map(
-        item => item.payload?.environment?.wind_speed?.value ?? item.payload?.wind_speed?.value ?? item.payload?.wind_speed
-      ).filter(Number.isFinite);
-      
-      drawChart($("windChart"), windHistoryData, {
-        name: "Wind speed",
-        color: "#56b4ff",
-        height: 120
-      });
-    }
-
-    // B. Draw Side-by-Side Actual vs Prediction Matrix mapping graph inside Energy card container
-    if ($("energyChart")) {
-      drawEnergyChart($("energyChart"), predictions);
-    }
-  });
+  // B. Plot the future prediction array steps values inside the Right Column container (#energyChart)
+  if ($("energyChart")) {
+    drawPredictedFuelChart($("energyChart"), fuelForecastValues);
+  }
 }
 
 // ========================================================
-// 3. RUNTIME WEBSOCKET ROUTING CONNECTION
+// 4. WEBSOCKET REALTIME NETWORK EVENT RUNTIME
 // ========================================================
 function connect() {
   const protocol = location.protocol === "https:" ? "wss" : "ws";
@@ -233,14 +220,19 @@ function connect() {
   socket.onerror = () => socket.close();
 }
 
-// Attach click navigation callback sequences cleanly to back action bar triggers
+// Bind navigation callbacks neatly when browser mounting frames assemble
 document.addEventListener("DOMContentLoaded", () => {
   const backBtn = $("btnPrevPage");
   if (backBtn) {
     backBtn.addEventListener("click", () => {
-      window.location.href = "/"; // Direct routing link back to landing platform
+      window.location.href = "/"; // Direct routing link dropped back to home views path
     });
   }
 });
+
+// Structural helper function preventing console button action trigger crashes
+function switchView(viewName) {
+  console.log(`View context focused securely: ${viewName}`);
+}
 
 connect();
