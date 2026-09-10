@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Antarctic Station Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">❄ Antarctic Station Management</div>
+    <div class="connection">
+      <span id="connectionDot" class="offline"></span>
+      <span id="connectionText">Connecting...</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <button class="nav active">Overview</button>
+      <button class="nav">Environment</button>
+      <button class="nav">Energy</button>
+      <button class="nav">Resources</button>
+      <button class="nav">Infrastructure</button>
+      <button class="nav">Logistics</button>
+    </aside>
+
+    <section class="content">
+      <div class="station-header">
+        <div>
+          <p class="eyebrow">REMOTE POLAR FACILITY</p>
+          <h1 id="stationName">Loading station...</h1>
+          <p id="stationLocation">Waiting for telemetry</p>
+        </div>
+        <div class="last-update">
+          <span>Last update</span>
+          <strong id="lastUpdate">—</strong>
+        </div>
+      </div>
+
+      <section class="metrics" id="metrics"></section>
+
+      <section class="grid two-columns">
+        <article class="panel">
+          <div class="panel-title">
+            <h2>Environmental trends</h2>
+            <span>Recent telemetry</span>
+          </div>
+          <div class="charts">
+            <div>
+              <h3>External temperature</h3>
+              <div id="temperatureChart" class="chart"></div>
+              <strong id="temperatureValue">—</strong> °C
+            </div>
+            <div>
+              <h3>Wind speed</h3>
+              <div id="windChart" class="chart"></div>
+              <strong id="windValue">—</strong> km/h
+            </div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-title">
+            <h2>Energy usage</h2>
+            <span id="batteryValue">Battery —</span>
+          </div>
+          <div id="energyChart" class="chart large"></div>
+          <div id="generatorList" class="list"></div>
+        </article>
+      </section>
+
+      <section class="grid two-columns">
+        <article class="panel">
+          <div class="panel-title">
+            <h2>Resource reserves</h2>
+            <span>Current inventory</span>
+          </div>
+          <div id="resourceList" class="resource-list"></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-title">
+            <h2>Infrastructure health</h2>
+            <span>System status</span>
+          </div>
+          <div id="healthList" class="list"></div>
+        </article>
+      </section>
+
+      <section class="grid two-columns">
+        <article class="panel">
+          <div class="panel-title">
+            <h2>Personnel and logistics</h2>
+          </div>
+          <div id="logistics" class="logistics"></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-title">
+            <h2>Station conditions</h2>
+          </div>
+          <div id="conditions" class="condition-grid"></div>
+        </article>
+      </section>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <script src="/static/script.js"></script>
+</body>
+</html>

@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
@@ -12,7 +13,8 @@ from .websocket_manager import ConnectionManager
 router = APIRouter()
 manager = ConnectionManager()
 
-TEMPLATE_PATH = Path(__file__).parent / "templates" / "index.html"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+TEMPLATE_PATH = PROJECT_ROOT / "frontend" / "templates" / "index.html"
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -20,14 +22,43 @@ async def get_frontend():
     return TEMPLATE_PATH.read_text(encoding="utf-8")
 
 
+async def get_initial_telemetry() -> dict:
+    async with async_session() as session:
+        result = await session.execute(
+            select(TelemetryDocument)
+            .order_by(TelemetryDocument.timestamp.desc())
+            .limit(100)
+        )
+
+        documents = result.scalars().all()
+
+    return {
+        "type": "initial",
+        "latest": documents[0].payload if documents else None,
+        "history": [
+            {
+                "timestamp": document.timestamp.isoformat(),
+                "payload": document.payload,
+            }
+            for document in reversed(documents)
+        ],
+    }
+
+
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
 
     try:
+        await websocket.send_json(await get_initial_telemetry())
+
         while True:
             await websocket.receive_text()
+
     except WebSocketDisconnect:
+        manager.disconnect(websocket)
+
+    except Exception:
         manager.disconnect(websocket)
 
 
