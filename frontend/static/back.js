@@ -111,8 +111,8 @@ function drawEnergyChart(element, predictionData = {}) {
   const validForecast = windForecastValues.map(Number).filter(Number.isFinite);
 
   const series = [
-    { name: "💨 Actual Wind Speed (km/h)", data: historicalSeries },
-    { name: "🔮 Predicted Wind Speed (km/h)", data: validForecast }
+    { name: " Actual Wind Speed (km/h)", data: historicalSeries },
+    { name: " Predicted Wind Speed (km/h)", data: validForecast }
   ];
 
   const maxPoints = Math.max(...series.map(item => item.data.length), 1);

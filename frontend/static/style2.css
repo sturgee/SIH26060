@@ -90,3 +90,24 @@ h1, h3 {
     grid-template-columns: 1fr;
   }
 }
+
+.hidden-view {
+  display: none !important;
+  opacity: 0 !important;
+}
+
+.nav-btn {
+  background: transparent;
+  color: #8da3ba;
+  border: none;
+  padding: 12px 24px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nav-btn.active {
+  background: #1e293b;
+  color: #ffffff;
+  border-left: 4px solid #56b4ff;
+}

@@ -10,6 +10,11 @@
 </head>
 <body>
 
+  <div class="sidebar">
+    
+      <button onclick="switchView('generator')" class="nav-btn nav-btn active">Generator</button>
+  </div>
+  
 <div class="dashboard-section-view">
   
   <!-- Navigation Top Bar -->
@@ -58,13 +63,15 @@
     <!-- Right Column (Energy Usage / Grid Status) -->
     <div class="grid-card energy-usage">
       <div class="card-header-flex">
-        <h3>Energy usage</h3>
+        <h3>Predicted Wind Power</h3>
         <!-- <span id="batteryValue" class="card-subtitle">BATTERY —%</span> -->
       </div>
       
       <div id="energyChart"></div>
       
       <div id="generatorList" class="status-list">
+        <h3 class="res">Actual Wind Power</h3><span id="act_value">_</span>
+        <h3 class="res">Predicted Wind Power</h3><span id="pre_value">_</span>
         <!-- Dynamically populated via renderEnergy() -->
       </div>
     </div>

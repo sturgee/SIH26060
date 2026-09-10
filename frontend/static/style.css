@@ -331,10 +331,10 @@ h3 {
 }
 
 .data-warning {
-  position: fixed;
+  position: absolute;
   top: 82px;
   right: 24px;
-  z-index: 1000;
+  /* z-index: 1000; */
   display: none;
   padding: 12px 16px;
   border: 1px solid #8b5e18;
