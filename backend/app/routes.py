@@ -22,12 +22,14 @@ async def get_frontend():
     return TEMPLATE_PATH.read_text(encoding="utf-8")
 
 
+# ... Keep lines 1-25 unchanged ...
+
 async def get_initial_telemetry() -> dict:
     async with async_session() as session:
         result = await session.execute(
             select(TelemetryDocument)
             .order_by(TelemetryDocument.timestamp.desc())
-            .limit(100)
+            .limit(20)  # ⚡ CHANGED: Reduced from 100 to 20 for lightning-fast loads
         )
 
         documents = result.scalars().all()

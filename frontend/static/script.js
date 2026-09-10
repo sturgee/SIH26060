@@ -1,7 +1,7 @@
 let currentData = null;
 let history = [];
 
-const MAX_CHART_POINTS = 60;
+const MAX_CHART_POINTS = 7;
 const chartInstances = {};
 
 const $ = (id) => document.getElementById(id);
@@ -16,9 +16,126 @@ function percent(value, capacity) {
   return capacity ? Math.min(100, value / capacity * 100) : 0;
 }
 
+// function drawChart(element, values, options = {}) {
+//   const id = element.id;
+
+//   const validValues = values
+//     .map(Number)
+//     .filter(Number.isFinite)
+//     .slice(-MAX_CHART_POINTS);
+
+//   if (!validValues.length) {
+//     if (chartInstances[id]) {
+//       chartInstances[id].destroy();
+//       delete chartInstances[id];
+//     }
+
+//     element.innerHTML = `<div class="chart-empty">No data</div>`;
+//     return;
+//   }
+
+//   // 1. Correctly extract times from the telemetry history array
+//   const categories = history
+//     .slice(-MAX_CHART_POINTS)
+//     .map(item => {
+//       if (!item.timestamp) return '';
+//       const date = new Date(item.timestamp);
+//       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+//     });
+
+//   const series = [{
+//     name: options.name || "Value",
+//     data: validValues,
+//   }];
+
+//   // 2. Safely push axis updates during runtime updates
+//  if (chartInstances[id]) {
+//     chartInstances[id].updateOptions({
+//       xaxis: { 
+//         categories: categories,
+//         tickAmount: 4 // ⭐ Make sure this is added here too!
+//       },
+//       yaxis: {
+//         tickAmount: 3 // ⭐ Make sure this is added here too!
+//       }
+//     }, false, false);
+
+//     chartInstances[id].updateSeries(series, false);
+//     return;
+//   }
+
+//   element.innerHTML = "";
+
+//   // 3. Initialize ApexCharts with strict color and display visibility rules
+//   const chart = new ApexCharts(element, {
+//     chart: {
+//       type: options.type || "area",
+//       height: options.height || 130,
+//       toolbar: { show: false },
+//       zoom: { enabled: false },
+//       animations: {
+//         enabled: false,
+//       },
+//       background: "transparent",
+//     },
+//     series,
+//     colors: [options.color || "#56b4ff"],
+//     stroke: {
+//       curve: "smooth",
+//       width: 3,
+//     },
+//     fill: {
+//       type: "gradient",
+//       gradient: {
+//         shadeIntensity: 1,
+//         opacityFrom: 0.35,
+//         opacityTo: 0.03,
+//       },
+//     },
+//     markers: {
+//       size: 0,
+//       hover: { size: 5 },
+//     },
+//     xaxis: {
+//       categories: categories,
+//       type: 'category',
+//       labels: { 
+//         show: true,
+//         style: {
+//           colors: "#8da3ba",
+//           fontSize: "10px"
+//         }
+//       },
+//       axisBorder: { show: false },
+//       axisTicks: { show: false },
+//     },
+//     yaxis: {
+//       labels: {
+//         style: { colors: "#8da3ba" },
+//         formatter: value => Number(value).toFixed(1),
+//       },
+//     },
+//     grid: {
+//       borderColor: "#203650",
+//       strokeDashArray: 4,
+//     },
+//     tooltip: {
+//       theme: "dark",
+//       x: { show: true },
+//       y: {
+//         formatter: value => Number(value).toFixed(2),
+//       },
+//     },
+//     dataLabels: { enabled: false },
+//   });
+
+//   chartInstances[id] = chart;
+//   chart.render();
+// }
 function drawChart(element, values, options = {}) {
   const id = element.id;
 
+  // 1. Map values and take recent points cleanly
   const validValues = values
     .map(Number)
     .filter(Number.isFinite)
@@ -29,86 +146,81 @@ function drawChart(element, values, options = {}) {
       chartInstances[id].destroy();
       delete chartInstances[id];
     }
-
     element.innerHTML = `<div class="chart-empty">No data</div>`;
     return;
   }
 
-  const categories = validValues.map((_, index) => index + 1);
-  const series = [{
-    name: options.name || "Value",
-    data: validValues,
-  }];
+  // 2. Extract RAW UNIX Timestamps (Numbers) for the chart engine
+  const recentHistory = history.slice(-MAX_CHART_POINTS);
+  const chartData = validValues.map((val, idx) => {
+    const historyItem = recentHistory[idx];
+    // Fallback to current time if historical timestamps aren't generated yet
+    const timestamp = historyItem ? new Date(historyItem.timestamp).getTime() : new Date().getTime();
+    return [timestamp, val];
+  });
 
+  // 3. If chart exists, perform a unified single layout refresh update
   if (chartInstances[id]) {
-    chartInstances[id].updateOptions({
-      xaxis: { categories },
-    }, false, false);
-
-    chartInstances[id].updateSeries(series, false);
+    chartInstances[id].updateSeries([{
+      name: options.name || "Value",
+      data: chartData
+    }], true);
     return;
   }
 
   element.innerHTML = "";
 
+  // 4. Construct the initial chart instance with absolute layout protection
   const chart = new ApexCharts(element, {
     chart: {
       type: options.type || "area",
-      height: options.height || 130,
+      height: options.height || 140, // Increased slightly to give text breathing room
       toolbar: { show: false },
       zoom: { enabled: false },
-      animations: {
-        enabled: false,
-      },
+      animations: { enabled: false },
       background: "transparent",
+      foreColor: "#8da3ba" // Colors labels globally
     },
-    series,
+    series: [{
+      name: options.name || "Value",
+      data: chartData
+    }],
     colors: [options.color || "#56b4ff"],
-    stroke: {
-      curve: "smooth",
-      width: 3,
-    },
+    stroke: { curve: "smooth", width: 3 },
     fill: {
       type: "gradient",
-      gradient: {
-        shadeIntensity: 1,
-        opacityFrom: 0.35,
-        opacityTo: 0.03,
-      },
-    },
-    markers: {
-      size: 0,
-      hover: { size: 5 },
+      gradient: { shadeIntensity: 1, opacityFrom: 0.35, opacityTo: 0.03 }
     },
     xaxis: {
-      categories,
-      labels: { show: false },
+      type: 'datetime', // Changed to datetime to activate intelligent text spacing
+      labels: {
+        show: true,
+        style: { fontSize: "10px", colors: "#8da3ba" },
+        datetimeUTC: false, // Uses your local machine time structure
+        format: 'hh:mm:ss TT' // Formats text neatly (e.g., 12:25:31 AM)
+      },
       axisBorder: { show: false },
-      axisTicks: { show: false },
+      axisTicks: { show: false }
     },
     yaxis: {
+      tickAmount: 3, // Enforces clean, non-stacking vertical gaps
       labels: {
         style: { colors: "#8da3ba" },
-        formatter: value => Number(value).toFixed(1),
-      },
+        formatter: value => Number(value).toFixed(1)
+      }
     },
-    grid: {
-      borderColor: "#203650",
-      strokeDashArray: 4,
-    },
+    grid: { borderColor: "#203650", strokeDashArray: 4 },
     tooltip: {
       theme: "dark",
-      x: { show: false },
-      y: {
-        formatter: value => Number(value).toFixed(2),
-      },
+      x: { format: 'hh:mm:ss TT' }
     },
-    dataLabels: { enabled: false },
+    dataLabels: { enabled: false }
   });
 
   chartInstances[id] = chart;
   chart.render();
 }
+
 
 function drawEnergyChart(element, generators) {
   const id = element.id;
@@ -133,9 +245,13 @@ function drawEnergyChart(element, generators) {
     });
   }
 
-  const categories = Array.from({
-    length: Math.max(...series.map(item => item.data.length), 1),
-  }, (_, index) => index + 1);
+  const categories = history
+    .slice(-MAX_CHART_POINTS)
+    .map(item => {
+      if (!item.timestamp) return '';
+      const date = new Date(item.timestamp);
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    });
 
   if (chartInstances[id]) {
     chartInstances[id].updateOptions({
@@ -181,7 +297,13 @@ function drawEnergyChart(element, generators) {
     },
     xaxis: {
       categories,
-      labels: { show: false },
+      labels: { 
+        show: true,
+        style: {
+          colors: "#8da3ba",
+          fontSize: "10px"
+        }
+      },
       axisBorder: { show: false },
       axisTicks: { show: false },
     },
@@ -359,24 +481,46 @@ function render(data) {
   renderConditions(data);
   renderLogistics(data);
 
-  const temperatures = history.map(
-    item => item.payload?.environment?.external_temperature?.value
+//   const temperatures = history.map(
+//     item => item.payload?.environment?.external_temperature?.value
+//   ).filter(Number.isFinite);
+
+//   const wind = history.map(
+//     item => item.payload?.environment?.wind_speed?.value
+//   ).filter(Number.isFinite);
+
+//   drawChart($("temperatureChart"), temperatures, {
+//     name: "Temperature",
+//     color: "#fb7185",
+//     height: 110,
+//   });
+
+//   drawChart($("windChart"), wind, {
+//     name: "Wind speed",
+//     color: "#56b4ff",
+//     height: 110,
+//   });
+// }
+const recentHistory = history.slice(-MAX_CHART_POINTS);
+
+  const temperatures = recentHistory.map(
+    item => item.payload?.environment?.external_temperature?.value ?? item.payload?.environment?.value ?? item.payload?.value
   ).filter(Number.isFinite);
 
-  const wind = history.map(
-    item => item.payload?.environment?.wind_speed?.value
+  const wind = recentHistory.map(
+    item => item.payload?.environment?.wind_speed?.value ?? item.payload?.wind_speed?.value ?? item.payload?.value
   ).filter(Number.isFinite);
 
   drawChart($("temperatureChart"), temperatures, {
     name: "Temperature",
     color: "#fb7185",
-    height: 110,
+    height: 120,
   });
 
   drawChart($("windChart"), wind, {
     name: "Wind speed",
     color: "#56b4ff",
-    height: 110,
+    height: 120,
   });
 }
 

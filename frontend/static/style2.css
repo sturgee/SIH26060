@@ -1,0 +1,72 @@
+/* Navigation Button Styling */
+/* Core Page Layout Settings */
+body {
+  background-color: #060b19 !important; /* Forces the deep dark blue background theme */
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+h1, h3 {
+  color: #ffffff;
+  margin: 0 0 10px 0;
+}
+
+.facility-tag {
+  color: #8da3ba;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+
+/* --- Your existing Navigation Button & Grid layout CSS follows right here below --- */
+.back-nav-container {
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.btn-prev-page {
+  background-color: #1e293b;
+  color: #8da3ba;
+  border: 1px solid #334155;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-prev-page:hover {
+  background-color: #334155;
+  color: #ffffff;
+  border-color: #475569;
+}
+
+/* Isolated Grid Layout Configurations */
+.dashboard-section-view {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.dashboard-main-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.grid-card {
+  background-color: #0b1329;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.card-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}

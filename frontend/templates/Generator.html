@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antarctic Station Dashboard</title>
+    <!-- 1. Added ApexCharts core engine so charts can actually render -->
+    <!-- <script src="https://jsdelivr.net"></script> -->
+    <!-- 2. Linked to your main stylesheet file path -->
+    <link rel="stylesheet" href="/static/style2.css?v=2">
+</head>
+<body>
+
+<div class="dashboard-section-view">
+  
+  <!-- Navigation Top Bar -->
+  <div class="back-nav-container">
+    <button id="btnPrevPage" class="btn-prev-page">
+      ← Locate to Previous Page
+    </button>
+  </div>
+
+  <!-- Station Header Details -->
+  <div class="station-header">
+    <span class="facility-tag">REMOTE POLAR FACILITY</span>
+    <h1 id="stationName">Bharati</h1>
+    <div class="station-meta">
+      <span id="stationLocation">69.413°, 76.187°</span>
+      
+    </div>
+  </div>
+
+  <!-- Key Metrics Row (Top Cards) -->
+  <div id="metrics" class="metrics-grid">
+    <!-- Dynamically populated via renderMetrics() -->
+  </div>
+
+  <!-- Main Multi-Column Split Panel -->
+  <div class="dashboard-main-grid">
+    
+    <!-- Left Column (Environmental Trends) -->
+    <div class="grid-card environmental-trends">
+      <h3>Environmental trends</h3>
+      <span class="card-subtitle">RECENT TELEMETRY</span>
+      
+      <div class="charts-split">
+        <div class="chart-wrapper">
+          <div id="temperatureChart"></div>
+          <div class="chart-value"><strong id="temperatureValue">—</strong> °C</div>
+        </div>
+        
+        <div class="chart-wrapper">
+          <div id="windChart"></div>
+          <div class="chart-value"><strong id="windValue">—</strong> km/h</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column (Energy Usage / Grid Status) -->
+    <div class="grid-card energy-usage">
+      <div class="card-header-flex">
+        <h3>Energy usage</h3>
+        <span id="batteryValue" class="card-subtitle">BATTERY —%</span>
+      </div>
+      
+      <div id="energyChart"></div>
+      
+      <div id="generatorList" class="status-list">
+        <!-- Dynamically populated via renderEnergy() -->
+      </div>
+    </div>
+
+  </div> <!-- Closed the dashboard-main-grid cleanly before running logic scripts -->
+</div>
+
+<!-- 3. Moved the logic script safely to the bottom of the body context -->
+<script src="/static/back.js" defer></script>
+</body>
+</html>
