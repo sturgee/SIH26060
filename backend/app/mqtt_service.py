@@ -167,6 +167,31 @@ async def load_numeric_history(
     return history
 
 
+def add_environment_summary(payload: dict[str, Any]) -> dict[str, Any]:
+    environment = payload.setdefault("environment", {})
+    wind_data = environment.get("wind_speed")
+
+    if isinstance(wind_data, dict):
+        wind_value = wind_data.get("value")
+    else:
+        wind_value = wind_data
+
+    if isinstance(wind_value, (int, float)) and not isinstance(wind_value, bool):
+        wind_history.append(float(wind_value))
+
+    if wind_history:
+        environment["average_wind_speed"] = {
+            "value": round(
+                sum(wind_history) / len(wind_history),
+                1,
+            ),
+            "unit": "km/h",
+            "samples": len(wind_history),
+        }
+
+    return payload
+
+
 async def process_telemetry(
     payload: dict[str, Any],
 ) -> dict[str, Any]:
