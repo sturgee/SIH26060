@@ -5,7 +5,8 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip intall -r requirements.txt
 python3 station_simulator.py
-uvicorn backend.app.main:app --reload
+uvicorn backend.app.main:app --reload or, python -m uvicorn backend.app.main:app --reload
+
 ```
 
 Then open http://localhost:8000 in a browser.
