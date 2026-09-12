@@ -11,6 +11,7 @@ from .database import async_session
 from .forecasting import build_predictions
 from .models import TelemetryDocument, TelemetryValue
 from .websocket_manager import ConnectionManager
+from .supplies import add_supply_forecast
 
 
 MQTT_HOST = "localhost"
@@ -195,6 +196,9 @@ def add_environment_summary(payload: dict[str, Any]) -> dict[str, Any]:
 async def process_telemetry(
     payload: dict[str, Any],
 ) -> dict[str, Any]:
+    payload = add_environment_summary(payload)
+    payload = add_supply_forecast(payload)
+
     await save_telemetry(payload)
 
     station_id = get_station_id(payload)

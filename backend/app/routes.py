@@ -8,7 +8,7 @@ from sqlalchemy import select
 from .database import async_session
 from .models import TelemetryDocument, TelemetryValue
 from .websocket_manager import ConnectionManager
-
+from pydantic import BaseModel
 
 router = APIRouter()
 manager = ConnectionManager()
@@ -27,6 +27,13 @@ async def environment_page():
     return (PROJECT_ROOT / "frontend" / "templates" / "Environment.html").read_text(
         encoding="utf-8"
     )
+
+
+@router.get("/Supplies", response_class=HTMLResponse)
+async def supplies_page():
+    return (
+        PROJECT_ROOT / "frontend" / "templates" / "Supplies.html"
+    ).read_text(encoding="utf-8")
 
 
 async def get_initial_telemetry() -> dict:
@@ -136,3 +143,32 @@ async def get_telemetry_document(document_id: int):
                 for value in values
             ],
         }
+
+
+class FuelTemperatureRequest(BaseModel):
+    temperature: float
+
+
+@router.post("/api/supplies/fuel-forecast")
+async def fuel_forecast(request: FuelTemperatureRequest):
+    async with async_session() as session:
+        result = await session.execute(
+            select(TelemetryDocument)
+            .order_by(TelemetryDocument.timestamp.desc())
+            .limit(1)
+        )
+
+        document = result.scalar_one_or_none()
+
+    if document is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No telemetry data available",
+        )
+
+    from .supplies import calculate_fuel_temperature_forecast
+
+    return calculate_fuel_temperature_forecast(
+        document.payload,
+        request.temperature,
+    )

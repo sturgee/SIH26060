@@ -1,0 +1,124 @@
+<!-- filepath: /home/Swapnanil/sih/SIH26060/frontend/templates/Supplies.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Supplies | Antarctic Station</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Antarctic Station Management</div>
+    <div class="connection">
+      <span id="connectionDot" class="offline"></span>
+      <span id="connectionText">Connecting...</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <a href="/"><button class="nav">Overview</button></a>
+      <a href="/Environment"><button class="nav">Environment</button></a>
+      <a href="/Generator"><button class="nav">Generator</button></a>
+      <a href="/Supplies"><button class="nav active">Supplies</button></a>
+    </aside>
+
+    <section class="content">
+      <div class="station-header">
+        <div>
+          <p class="eyebrow">SUPPLY FORECAST</p>
+          <h1>Supply duration</h1>
+          <p id="stationLocation">Waiting for telemetry</p>
+        </div>
+
+        <div class="last-update">
+          <span>Last update</span>
+          <strong id="lastUpdate">—</strong>
+        </div>
+      </div>
+
+      <section class="grid two-columns">
+        <article class="panel supply-card">
+          <div class="panel-title">
+            <h2>Food</h2>
+            <span id="foodStatus">—</span>
+          </div>
+          <div class="supply-days" id="foodDays">—</div>
+          <p>Approximate days remaining</p>
+        </article>
+
+        <article class="panel supply-card">
+          <div class="panel-title">
+            <h2>Water</h2>
+            <span id="waterStatus">—</span>
+          </div>
+          <div class="supply-days" id="waterDays">—</div>
+          <p>Approximate days remaining</p>
+        </article>
+
+        <article class="panel supply-card">
+          <div class="panel-title">
+            <h2>Fuel</h2>
+            <span id="fuelStatus">—</span>
+          </div>
+          <div class="supply-days" id="fuelDays">—</div>
+          <p>Approximate days remaining</p>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title">
+          <h2>Supply details</h2>
+        </div>
+        <div id="supplyDetails" class="list"></div>
+      </section>
+
+      <section class="panel temperature-input-panel">
+        <div class="panel-title">
+          <h2>Fuel estimate at another temperature</h2>
+          <span>Demonstration forecast</span>
+        </div>
+
+        <form id="fuelTemperatureForm" class="temperature-form">
+          <label for="fuelTemperature">
+            Temperature
+            <span>(°C)</span>
+          </label>
+
+          <input
+            id="fuelTemperature"
+            name="temperature"
+            type="number"
+            step="0.1"
+            required
+            placeholder="-20"
+          >
+
+          <button type="submit">Calculate</button>
+        </form>
+
+        <p id="fuelForecastMessage" class="forecast-message"></p>
+
+        <div class="temperature-results">
+          <div>
+            <span>Normal conditions</span>
+            <strong id="normalFuelDays">—</strong>
+          </div>
+
+          <div>
+            <span>At entered temperature</span>
+            <strong id="adjustedFuelDays">—</strong>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <div id="dataWarning" class="data-warning" role="status">
+      No data received — possible connection problem
+    </div>
+  </main>
+
+  <script src="/static/supplies.js"></script>
+</body>
+</html>
