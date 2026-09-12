@@ -352,3 +352,101 @@ h3 {
 a {
   text-decoration: none;
 }
+
+.supply-card {
+  min-height: 170px;
+}
+
+.supply-days {
+  margin: 20px 0 8px;
+  color: var(--blue);
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.supply-card p {
+  color: var(--muted);
+}
+
+.temperature-input-panel {
+  margin-bottom: 18px;
+}
+
+.temperature-form {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.temperature-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--muted);
+}
+
+.temperature-form label span {
+  display: inline;
+  font-size: 12px;
+}
+
+.temperature-form input {
+  width: 130px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  background: var(--panel-light);
+}
+
+.temperature-form button {
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 6px;
+  color: white;
+  background: #256da3;
+  cursor: pointer;
+}
+
+.temperature-form button:hover {
+  background: #3185c2;
+}
+
+.forecast-message {
+  min-height: 20px;
+  margin: 16px 0 8px;
+  color: var(--muted);
+}
+
+.temperature-results {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 220px));
+  gap: 20px;
+}
+
+.temperature-results div {
+  padding: 14px;
+  border-radius: 7px;
+  background: var(--panel-light);
+}
+
+.temperature-results span,
+.temperature-results strong {
+  display: block;
+}
+
+.temperature-results span {
+  margin-bottom: 8px;
+  color: var(--muted);
+}
+
+.temperature-results strong {
+  font-size: 18px;
+}
+
+@media (max-width: 600px) {
+  .temperature-results {
+    grid-template-columns: 1fr;
+  }
+}
