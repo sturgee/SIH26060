@@ -3,114 +3,186 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Environment | Antarctic Station</title>
-    <link rel="stylesheet" href="/static/style.css">
-    <link rel="stylesheet" href="/static/style2.css">
+    <title>Energy Grid Monitor - Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css?v=1.1">
+    <link rel="preconnect" href="https://googleapis.com">
+    <link rel="preconnect" href="https://gstatic.com" crossorigin>
+    <link href="https://googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- 🚀 LOADS THE GENUINE ENGINE LOCALLY — NO MORE MOCK SNIPPETS -->
 </head>
+
+
 <body>
-  <header class="topbar">
-    <div class="brand">❄ Antarctic Station Management</div>
-    <div class="connection">
-      <span id="connectionDot" class="offline"></span>
-      <span id="connectionText">Connecting...</span>
-    </div>
-  </header>
 
-  <main class="layout">
-    <aside class="sidebar">
-      <a href="/"><button class="nav">Overview</button></a>
-      <a href="/Environment"><button class="nav active">Environment</button></a>
-      <a href="/Generator"><button class="nav">Generator</button></a>
-      <a href="/Supplies"><button class="nav">Supplies</button></a>
-    </aside>
+    <!-- Header Navigation -->
+    <header class="app-header">
+        <div class="header-left">
+            <span class="app-logo-icon">⚡</span>
+            <h1>Energy Grid Monitor</h1>
+            <nav class="main-nav">
+                <a href="/" class="nav-link">Dashboard</a>
+                <a href="/Environment" class="nav-link active">Environment</a>
+                <a href="/Generator" class="nav-link">Generator</a>
+            </nav>
+        </div>
+        <div class="header-right">
+            <div class="user-profile">
+                <span class="avatar">AD</span>
+                <span class="status-indicator online"></span>
+            </div>
+        </div>
+    </header>
 
-    <section class="content">
-      <div class="station-header">
+    <!-- Main Content -->
+    <main class="dashboard-container">
+        
+        <!-- Live Metrics Box -->
+        <section class="dashboard-card live-feed-card">
+            <h2 class="card-title">Atmospheric Metrics <span class="badge live">Live Feed</span></h2>
+            <div class="metrics-grid">
+                
+                <!-- Temperature Card -->
+                <div class="metric-item">
+                    <div class="metric-icon-wrapper temp-bg">
+                        <svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>
+                    </div>
+                    <div class="metric-info">
+                        <span class="metric-label">Temperature</span>
+                        <div class="metric-value-wrapper">
+                            <span class="metric-value" id="temperature">--.-</span><span class="metric-unit">°C</span>
+                        </div>
+                        <span class="metric-status status-optimal">Monitored</span>
+                    </div>
+                </div>
+
+                <!-- Humidity Card -->
+                <div class="metric-item">
+                    <div class="metric-icon-wrapper humidity-bg">
+                        <svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    </div>
+                    <div class="metric-info">
+                        <span class="metric-label">Humidity</span>
+                        <div class="metric-value-wrapper">
+                            <span class="metric-value" id="humidity">--</span><span class="metric-unit">%</span>
+                        </div>
+                        <span class="metric-status status-moderate">Monitored</span>
+                    </div>
+                </div>
+
+                <!-- Wind Speed Card -->
+                <div class="metric-item">
+                    <div class="metric-icon-wrapper wind-bg">
+                        <svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/></svg>
+                    </div>
+                    <div class="metric-info">
+                        <span class="metric-label">Wind Speed</span>
+                        <div class="metric-value-wrapper">
+                            <span class="metric-value" id="wind_speed">--</span><span class="metric-unit">km/h</span>
+                        </div>
+                        <span class="metric-status status-moderate">Monitored</span>
+                    </div>
+                </div>
+
+                <!-- Solar Irradiance Card -->
+                <div class="metric-item">
+                    <div class="metric-icon-wrapper solar-bg">
+                        <svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                    </div>
+                    <div class="metric-info">
+                        <span class="metric-label">Solar Irradiance</span>
+                        <div class="metric-value-wrapper">
+                            <span class="metric-value" id="solar_irradiance">--</span><span class="metric-unit">W/m²</span>
+                        </div>
+                        <span class="metric-status status-optimal">Monitored</span>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <div class="dashboard-split-row">
+            <!-- Hardware Sensor Links -->
+           <div class="sensor-bus-card">
+    <div class="sensor-bus-header">
+        <div class="sensor-icon">
+            <span>⌁</span>
+        </div>
+
         <div>
-          <p class="eyebrow">LIVE ENVIRONMENT MONITORING</p>
-          <h1 id="stationName">Environment</h1>
-          <p id="stationLocation">Waiting for telemetry</p>
+            <h3>Telemetry Sensor Bus</h3>
+            <p>Live sensor connectivity</p>
         </div>
 
-        <div class="last-update">
-          <span>Last update</span>
-          <strong id="lastUpdate">—</strong>
+        <div class="bus-status">
+            <span class="status-dot online"></span>
+            ACTIVE
         </div>
-      </div>
-
-      <section class="metrics environment-metrics">
-        <div class="metric">
-          <div class="metric-label">🌡 Temperature</div>
-          <div class="metric-value" id="temperature">—</div>
-          <small>External temperature</small>
-        </div>
-
-        <div class="metric">
-          <div class="metric-label">💧 Humidity</div>
-          <div class="metric-value" id="humidity">—</div>
-          <small>Relative humidity</small>
-        </div>
-
-        <div class="metric">
-          <div class="metric-label">🌬 Average wind</div>
-          <div class="metric-value" id="averageWind">—</div>
-          <small id="windSamples">Backend rolling average</small>
-        </div>
-
-        <div class="metric">
-          <div class="metric-label">💨 Current wind</div>
-          <div class="metric-value" id="currentWind">—</div>
-          <small>Current wind speed</small>
-        </div>
-
-        <div class="metric">
-          <div class="metric-label">☀ Solar irradiance</div>
-          <div class="metric-value" id="solar">—</div>
-          <small>Available solar energy</small>
-        </div>
-      </section>
-
-      <section class="grid two-columns">
-        <article class="panel">
-          <div class="panel-title">
-            <h2>Temperature trend</h2>
-            <span>°C</span>
-          </div>
-          <div id="temperatureChart" class="chart environment-chart"></div>
-        </article>
-
-        <article class="panel">
-          <div class="panel-title">
-            <h2>Wind speed trend</h2>
-            <span>km/h</span>
-          </div>
-          <div id="windChart" class="chart environment-chart"></div>
-        </article>
-      </section>
-
-      <section class="grid two-columns">
-        <article class="panel">
-          <div class="panel-title">
-            <h2>Atmospheric conditions</h2>
-          </div>
-          <div id="conditionList" class="condition-grid"></div>
-        </article>
-
-        <article class="panel">
-          <div class="panel-title">
-            <h2>Visibility and sunlight</h2>
-          </div>
-          <div id="visibilityList" class="condition-grid"></div>
-        </article>
-      </section>
-    </section>
-
-    <div id="dataWarning" class="data-warning" role="status">
-      ⚠ No data received — possible connection problem
     </div>
-  </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-  <script src="/static/environment.js"></script>
+    <div class="sensor-list">
+
+        <div class="sensor-item">
+            <div class="sensor-left">
+                <div class="sensor-symbol">🌡</div>
+                <div>
+                    <strong>Thermal Array 01</strong>
+                    <span>Temperature monitoring</span>
+                </div>
+            </div>
+
+            <div class="sensor-status online-status">
+                <span class="status-dot online"></span>
+                Online
+            </div>
+        </div>
+
+        <div class="sensor-item">
+            <div class="sensor-left">
+                <div class="sensor-symbol">◉</div>
+                <div>
+                    <strong>Barometric Hygrometer</strong>
+                    <span>Pressure & humidity</span>
+                </div>
+            </div>
+
+            <div class="sensor-status online-status">
+                <span class="status-dot online"></span>
+                Online
+            </div>
+        </div>
+
+        <div class="sensor-item">
+            <div class="sensor-left">
+                <div class="sensor-symbol">≋</div>
+                <div>
+                    <strong>Anemometer Array</strong>
+                    <span>Wind-speed measurement</span>
+                </div>
+            </div>
+
+            <div class="sensor-status calibrating-status">
+                <span class="status-dot calibrating"></span>
+                Calibrating
+            </div>
+        </div>
+
+    </div>
+
+    <div class="sensor-footer">
+        <span>●</span>
+        Sensor network operational
+    </div>
+</div>
+
+            <!-- Real-time environmental chart -->
+            <section class="dashboard-card split-card">
+                <h2 class="card-title">Environmental Trends</h2>
+                <div id="environmentChart" class="live-chart-container"></div>
+            </section>
+        </div>
+    </main>
+
+    <script src="/static/script.js"></script>
 </body>
 </html>

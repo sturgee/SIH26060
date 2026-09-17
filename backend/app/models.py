@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import DateTime, ForeignKey, Integer, JSON, String, Text, Float, Index
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .database import Base
@@ -34,3 +34,20 @@ class TelemetryValue(Base):
     value_number: Mapped[float | None] = mapped_column(nullable=True)
     value_boolean: Mapped[bool | None] = mapped_column(nullable=True)
     value_json: Mapped[Any | None] = mapped_column(JSON, nullable=True)
+
+class TelemetryMeasurement(Base):
+    """Normalized numeric time-series values for fast historical chart queries."""
+    __tablename__ = "telemetry_measurements"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    station_id: Mapped[str] = mapped_column(String(100), index=True)
+    metric: Mapped[str] = mapped_column(Text, index=True)
+    value: Mapped[float] = mapped_column(Float, nullable=False)
+    unit: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    source: Mapped[str] = mapped_column(String(30), default="mqtt")
+
+    __table_args__ = (
+        Index("idx_measurement_metric_time", "metric", "timestamp"),
+        Index("idx_measurement_station_time", "station_id", "timestamp"),
+    )

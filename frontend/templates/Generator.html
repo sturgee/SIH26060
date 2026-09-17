@@ -3,85 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Antarctic Station Dashboard</title>
-    <!-- 1. Added ApexCharts core engine so charts can actually render -->
-    <!-- 2. Linked to your main stylesheet file path -->
-    <link rel="stylesheet" href="/static/style2.css?v=2">
+    <title>Energy Grid Monitor - Generator</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="preconnect" href="https://googleapis.com">
+    <link rel="preconnect" href="https://gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
-  <div class="sidebar">
-    
-      <button onclick="switchView('generator')" class="nav-btn nav-btn active">Generator</button>
-  </div>
-  
-<div class="dashboard-section-view">
-  
-  <!-- Navigation Top Bar -->
-  <div class="back-nav-container">
-    <button id="btnPrevPage" class="btn-prev-page">
-      ← Locate to Previous Page
-    </button>
-  </div>
-
-  <!-- Station Header Details -->
-  <div class="station-header">
-    <span class="facility-tag">REMOTE POLAR FACILITY</span>
-    <h1 id="stationName">Bharati</h1>
-    <div class="station-meta">
-      <span id="stationLocation">69.413°, 76.187°</span>
-      
-    </div>
-  </div>
-
-  <!-- Key Metrics Row (Top Cards) -->
-  <div id="metrics" class="metrics-grid">
-    <!-- Dynamically populated via renderMetrics() -->
-  </div>
-
-  <!-- Main Multi-Column Split Panel -->
-  <div class="dashboard-main-grid">
-    
-    <!-- Left Column (Environmental Trends) -->
-    <div class="grid-card environmental-trends">
-      <h3>Wind Power </h3>
-      <!-- <span class="card-subtitle">RECENT TELEMETRY</span> -->
-      
-      <div class="charts-split">
-        <div class="chart-wrapper">
-          <div id="temperatureChart"></div>
-          <!-- <div class="chart-value"><strong id="temperatureValue">—</strong> °C</div> -->
+    <!-- Header Navigation -->
+    <header class="app-header">
+        <div class="header-left">
+            <span class="app-logo-icon">⚡</span>
+            <h1>Energy Grid Monitor</h1>
+            <nav class="main-nav">
+                <a href="/" class="nav-link">Dashboard</a>
+                <a href="/Environment" class="nav-link">Environment</a>
+                <a href="/Generator" class="nav-link active">Generator</a>
+            </nav>
         </div>
+        <div class="header-right">
+            <div class="user-profile">
+                <span class="avatar">AD</span>
+                <span class="status-indicator online"></span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="dashboard-container">
         
-        <div class="chart-wrapper">
-          <div id="windChart"></div>
-         <h3 class="res">Fuel Consumption</h3><span id="act_value">_</span>
+        <!-- Live Generation Metrics Row -->
+        <section class="dashboard-card live-feed-card">
+            <h2 class="card-title">Power Plant Status <span class="badge live" style="background:#fef3c7; color:#d97706;">Simulation Active</span></h2>
+            <div class="metrics-grid">
+                
+                <!-- Power Output Metric -->
+                <div class="metric-item">
+                    <div class="metric-icon-wrapper solar-bg">⚡</div>
+                    <div class="metric-info">
+                        <span class="metric-label">Power Production</span>
+                        <div class="metric-value-wrapper">
+                            <span class="metric-value" id="generated_power">--.-</span><span class="metric-unit">kW</span>
+                        </div>
+                        <span class="metric-status status-optimal">Active Output</span>
+                    </div>
+                </div>
+
+                <!-- Core Load Capacity -->
+                <div class="metric-item">
+                    <div class="metric-icon-wrapper temp-bg">📈</div>
+                    <div class="metric-info">
+                        <span class="metric-label">Load Coefficient</span>
+                        <div class="metric-value-wrapper">
+                            <span class="metric-value" id="generator_load">--</span><span class="metric-unit">%</span>
+                        </div>
+                        <span class="metric-status status-optimal">Nominal</span>
+                    </div>
+                </div>
+
+                <!-- Simulation Speed -->
+                <div class="metric-item">
+                    <div class="metric-icon-wrapper wind-bg">⏱️</div>
+                    <div class="metric-info">
+                        <span class="metric-label">Refresh Interval</span>
+                        <div class="metric-value-wrapper">
+                            <span class="metric-value" id="update_rate">1.0</span><span class="metric-unit">sec</span>
+                        </div>
+                        <span class="metric-status status-moderate">Real-time</span>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <div class="dashboard-split-row">
+            <section class="dashboard-card split-card">
+                <h2 class="card-title">Live Generation Trend</h2>
+                <div id="generatorChart" class="live-chart-container"></div>
+            </section>
+
+            <!-- Simulated Core Systems -->
+            <section class="dashboard-card split-card">
+                <h2 class="card-title">Subsystem Simulators</h2>
+                <ul class="sensor-list">
+                    <li class="sensor-item">
+                        <div class="sensor-meta">
+                            <span class="indicator-ring ring-online"></span>
+                            <span class="sensor-name">Turbine Simulator Engine</span>
+                        </div>
+                        <span class="sensor-status text-online">Running</span>
+                    </li>
+                    <li class="sensor-item">
+                        <div class="sensor-meta">
+                            <span class="indicator-ring ring-online"></span>
+                            <span class="sensor-name">Inverter Stage Phase Link</span>
+                        </div>
+                        <span class="sensor-status text-online">Synchronized</span>
+                    </li>
+                    <li class="sensor-item">
+                        <div class="sensor-meta">
+                            <span class="indicator-ring ring-online"></span>
+                            <span class="sensor-name">Dynamic Load Balancer</span>
+                        </div>
+                        <span class="sensor-status text-online">Active</span>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Interactive Info Card -->
+            <section class="dashboard-card split-card">
+                <h2 class="card-title">Simulator Control Guide</h2>
+                <div style="background-color: var(--bg-primary); padding: 1rem; border-radius: 8px; border-left: 4px solid var(--primary-blue);">
+                    <p style="font-size: 0.875rem; color: var(--text-main); font-weight: 500; margin-bottom: 0.5rem;">💡 Real-time Pipeline Link Active</p>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">This engine automatically pipes real-time data from your backend script (`station_simulator.py`) directly over WebSockets into the DOM fields shown above. Do not refresh this page manually while a simulation routine is currently executing.</p>
+                </div>
+            </section>
         </div>
-      </div>
-    </div>
+    </main>
 
-    <!-- Right Column (Energy Usage / Grid Status) -->
-    <div class="grid-card energy-usage">
-      <div class="card-header-flex">
-        <h3>Predicted Wind Power</h3>
-        <!-- <span id="batteryValue" class="card-subtitle">BATTERY —%</span> -->
-      </div>
-      
-      <div id="energyChart"></div>
-      
-      <div id="generatorList" class="status-list">
-       
-        <h3 class="res">Predicted Fuel Consumption</h3><span id="pre_value">_</span>
-        <!-- Dynamically populated via renderEnergy() -->
-      </div>
-    </div>
-
-  </div> <!-- Closed the dashboard-main-grid cleanly before running logic scripts -->
-</div>
-
-<!-- 3. Moved the logic script safely to the bottom of the body context -->
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-
-<script src="/static/back.js" defer></script>
+    <script src="/static/script.js"></script>
 </body>
 </html>

@@ -1,5 +1,71 @@
-.*
-!.gitignore
+# =========================
+# Python
+# =========================
 __pycache__/
-telemetry.db
-buff*
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python tooling / test cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# =========================
+# Environment & secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Runtime / generated data
+# =========================
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+# =========================
+# Build / packaging
+# =========================
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# =========================
+# IDE / editor
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# =========================
+# Node / frontend tooling
+# Keep this even if Node is added later.
+# =========================
+node_modules/
+.npm/
+
+# =========================
+# Temporary files
+# =========================
+*.tmp
+*.temp

@@ -1,114 +1,91 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Antarctic Station Dashboard</title>
-  <link rel="stylesheet" href="/static/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energy Grid Monitor - Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">❄ Antarctic Station Management</div>
-    <div class="connection">
-      <span id="connectionDot" class="offline"></span>
-      <span id="connectionText">Connecting...</span>
-    </div>
-  </header>
 
-  <main class="layout">
-    <aside class="sidebar">
-      <button class="nav active">Overview</button>
-      <a href="Environment"><button class="nav">Environment</button></a>
-      <a href="Generator"><button class="nav">Generator</button></a>
-      <a href="/Supplies"><button class="nav">Supplies</button></a>
-    </aside>
-
-    <section class="content">
-      <div class="station-header">
-        <div>
-          <p class="eyebrow">REMOTE POLAR FACILITY</p>
-          <h1 id="stationName">Loading station...</h1>
-          <p id="stationLocation">Waiting for telemetry</p>
+    <!-- Header Navigation Bar -->
+    <header class="app-header">
+        <div class="header-left">
+            <span class="app-logo-icon">⚡</span>
+            <h1>Energy Grid Monitor</h1>
+            <nav class="main-nav">
+                <a href="/" class="nav-link active">Dashboard</a>
+                <a href="/environment" class="nav-link">Environment</a>
+                <a href="/generator" class="nav-link">Generator</a>
+            </nav>
         </div>
-        <div class="last-update">
-          <span>Last update</span>
-          <strong id="lastUpdate">—</strong>
+        <div class="header-right">
+            <div class="user-profile">
+                <span class="avatar">AD</span>
+                <span class="status-indicator online" id="connection-indicator"></span>
+            </div>
         </div>
-      </div>
+    </header>
 
-      <section class="metrics" id="metrics"></section>
-
-      <section class="grid two-columns">
-        <article class="panel">
-          <div class="panel-title">
-            <h2>Environmental trends</h2>
-            <span>Recent telemetry</span>
-          </div>
-          <div class="charts">
-            <div>
-              <h3>External temperature</h3>
-              <div id="temperatureChart" class="chart"></div>
-              <strong id="temperatureValue">—</strong> °C
+    <!-- Main Core Dashboard Space -->
+    <main class="dashboard-container">
+        
+        <!-- Live System Metric Feeds -->
+        <section class="dashboard-card live-feed-card">
+            <h2 class="card-title">Live System Metrics <span class="badge">Active</span></h2>
+            <div class="metrics-grid">
+                <div class="metric-item">
+                    <div class="metric-info">
+                        <span class="metric-label">Ambient Temperature</span>
+                        <div class="metric-value-wrapper"><span class="metric-value" id="temperature">--.-</span><span class="metric-unit">°C</span></div>
+                    </div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-info">
+                        <span class="metric-label">Relative Humidity</span>
+                        <div class="metric-value-wrapper"><span class="metric-value" id="humidity">--</span><span class="metric-unit">%</span></div>
+                    </div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-info">
+                        <span class="metric-label">Wind Velocity</span>
+                        <div class="metric-value-wrapper"><span class="metric-value" id="wind_speed">--</span><span class="metric-unit">km/h</span></div>
+                    </div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-info">
+                        <span class="metric-label">Solar Irradiance</span>
+                        <div class="metric-value-wrapper"><span class="metric-value" id="solar_irradiance">--</span><span class="metric-unit">W/m²</span></div>
+                    </div>
+                </div>
             </div>
-            <div>
-              <h3>Wind speed</h3>
-              <div id="windChart" class="chart"></div>
-              <strong id="windValue">—</strong> km/h
-            </div>
-          </div>
-        </article>
+        </section>
 
-        <article class="panel">
-          <div class="panel-title">
-            <h2>Energy usage</h2>
-            <span id="batteryValue">Battery —</span>
-          </div>
-          <div id="energyChart" class="chart large"></div>
-          <div id="generatorList" class="list"></div>
-        </article>
-      </section>
+        <!-- Split Layout Panel Row -->
+        <div class="dashboard-split-row">
+            
+            <!-- Dynamic Trending Charts Container Slots -->
+            <section class="dashboard-card split-card">
+                <h2 class="card-title">Live Dynamic Trends</h2>
+                <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                    <div id="chart" style="width: 100%; min-height: 220px;"></div>
+                    <div id="energyChart" style="width: 100%; min-height: 220px;"></div>
+                </div>
+            </section>
+            
+            <!-- <section class="dashboard-card split-card">
+                <h2 class="card-title">System Core Logs</h2>
+                <div id="logs" style="font-family: monospace; font-size: 0.85rem; min-height: 485px; max-height: 485px; overflow-y: auto; background: #f8fafc; padding: 1.25rem; border-radius: 8px; border: 1px solid #e2e8f0; line-height: 1.6;">
+                </div>
+            </section> -->
 
-      <section class="grid two-columns">
-        <article class="panel">
-          <div class="panel-title">
-            <h2>Resource reserves</h2>
-            <span>Current inventory</span>
-          </div>
-          <div id="resourceList" class="resource-list"></div>
-        </article>
+        </div>
+    </main>
 
-        <article class="panel">
-          <div class="panel-title">
-            <h2>Infrastructure health</h2>
-            <span>System status</span>
-          </div>
-          <div id="healthList" class="list"></div>
-        </article>
-      </section>
-
-      <section class="grid two-columns">
-        <article class="panel">
-          <div class="panel-title">
-            <h2>Personnel and logistics</h2>
-          </div>
-          <div id="logistics" class="logistics"></div>
-        </article>
-
-        <article class="panel">
-          <div class="panel-title">
-            <h2>Station conditions</h2>
-          </div>
-          <div id="conditions" class="condition-grid"></div>
-        </article>
-      </section>
-    </section>
-
-    <div id="dataWarning" class="data-warning" role="status">
-      ⚠ No data received — possible connection problem
-    </div>
-  </main>
-
-  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-  <script src="/static/script.js"></script>
+    <!-- Project Script Pipeline Integration -->
+    <script src="/static/script.js"></script>
 </body>
 </html>

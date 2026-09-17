@@ -2,39 +2,18 @@ import json
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse
 from sqlalchemy import select
+from datetime import datetime, timezone
 
 from .database import async_session
 from .models import TelemetryDocument, TelemetryValue
 from .websocket_manager import ConnectionManager
-from pydantic import BaseModel
+from .time_series import query_range
+from .time_utils import iso_utc
+
 
 router = APIRouter()
 manager = ConnectionManager()
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-TEMPLATE_PATH = PROJECT_ROOT / "frontend" / "templates" / "index.html"
-
-
-@router.get("/", response_class=HTMLResponse)
-async def get_frontend():
-    return TEMPLATE_PATH.read_text(encoding="utf-8")
-
-
-@router.get("/Environment", response_class=HTMLResponse)
-async def environment_page():
-    return (PROJECT_ROOT / "frontend" / "templates" / "Environment.html").read_text(
-        encoding="utf-8"
-    )
-
-
-@router.get("/Supplies", response_class=HTMLResponse)
-async def supplies_page():
-    return (
-        PROJECT_ROOT / "frontend" / "templates" / "Supplies.html"
-    ).read_text(encoding="utf-8")
-
 
 async def get_initial_telemetry() -> dict:
     async with async_session() as session:
@@ -51,11 +30,59 @@ async def get_initial_telemetry() -> dict:
         "latest": documents[0].payload if documents else None,
         "history": [
             {
-                "timestamp": document.timestamp.isoformat(),
+                "timestamp": iso_utc(document.timestamp),
                 "payload": document.payload,
             }
             for document in reversed(documents)
         ],
+    }
+
+
+
+
+@router.get("/api/telemetry/range")
+async def get_telemetry_range(
+    metric: str,
+    start: str,
+    end: str,
+    station_id: str | None = None,
+):
+    """Return raw or proportionally aggregated telemetry for an exact time range."""
+    try:
+        start_dt = datetime.fromisoformat(start.replace("Z", "+00:00"))
+        end_dt = datetime.fromisoformat(end.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid ISO timestamp. Use YYYY-MM-DDTHH:MM:SS") from exc
+
+    if start_dt.tzinfo is None:
+        start_dt = start_dt.replace(tzinfo=timezone.utc)
+    if end_dt.tzinfo is None:
+        end_dt = end_dt.replace(tzinfo=timezone.utc)
+    if end_dt <= start_dt:
+        raise HTTPException(status_code=400, detail="end must be later than start")
+
+    return await query_range(metric, start_dt, end_dt, station_id)
+
+@router.get("/api/telemetry/latest")
+async def get_latest_telemetry():
+    """Return the newest stored telemetry packet as a REST fallback for the UI."""
+    async with async_session() as session:
+        result = await session.execute(
+            select(TelemetryDocument)
+            .order_by(TelemetryDocument.timestamp.desc(), TelemetryDocument.id.desc())
+            .limit(1)
+        )
+        document = result.scalar_one_or_none()
+
+    if document is None:
+        return {"timestamp": None, "station_id": None, "payload": None}
+
+    return {
+        "id": document.id,
+        "timestamp": iso_utc(document.timestamp),
+        "received_at": iso_utc(document.received_at),
+        "station_id": document.station_id,
+        "payload": document.payload,
     }
 
 
@@ -70,10 +97,10 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.receive_text()
 
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        await manager.disconnect(websocket)
 
     except Exception:
-        manager.disconnect(websocket)
+        await manager.disconnect(websocket)
 
 
 @router.get("/api/telemetry/recent")
@@ -92,8 +119,8 @@ async def get_recent_telemetry(limit: int = 10):
         return [
             {
                 "id": document.id,
-                "timestamp": document.timestamp,
-                "received_at": document.received_at,
+                "timestamp": iso_utc(document.timestamp),
+                "received_at": iso_utc(document.received_at),
                 "station_id": document.station_id,
                 "payload": document.payload,
             }
@@ -128,8 +155,8 @@ async def get_telemetry_document(document_id: int):
         return {
             "id": document.id,
             "station_id": document.station_id,
-            "timestamp": document.timestamp,
-            "received_at": document.received_at,
+            "timestamp": iso_utc(document.timestamp),
+            "received_at": iso_utc(document.received_at),
             "payload": document.payload,
             "values": [
                 {
@@ -143,32 +170,3 @@ async def get_telemetry_document(document_id: int):
                 for value in values
             ],
         }
-
-
-class FuelTemperatureRequest(BaseModel):
-    temperature: float
-
-
-@router.post("/api/supplies/fuel-forecast")
-async def fuel_forecast(request: FuelTemperatureRequest):
-    async with async_session() as session:
-        result = await session.execute(
-            select(TelemetryDocument)
-            .order_by(TelemetryDocument.timestamp.desc())
-            .limit(1)
-        )
-
-        document = result.scalar_one_or_none()
-
-    if document is None:
-        raise HTTPException(
-            status_code=404,
-            detail="No telemetry data available",
-        )
-
-    from .supplies import calculate_fuel_temperature_forecast
-
-    return calculate_fuel_temperature_forecast(
-        document.payload,
-        request.temperature,
-    )
