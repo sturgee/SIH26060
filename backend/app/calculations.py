@@ -317,24 +317,3 @@ def per_capita_rate(total_rate: float, personnel_count: int) -> Optional[float]:
 
 def load_ratio_pct(load: float, rated_capacity: float) -> float:
     return round((load / rated_capacity) * 100, 1) if rated_capacity else 0.0
-
-
-if __name__ == "__main__":
-    # Quick sanity check using values pulled from format.json
-    print("days_remaining (fuel):", days_remaining(13340, 1000))
-    print("wind_chill:", wind_chill(-24.7, 32.4))
-    print("dew_point (storage zone):", dew_point(8.4, 48))
-    heat_w = zone_heat_loss(U_value=0.4, area_m2=40, temp_inside_c=8.4, temp_outside_c=-24.7, wind_speed_kmh=32.4)
-    print("zone_heat_loss (storage, W):", heat_w)
-    print("heat_loss_to_fuel_rate (L/hr):", heat_loss_to_fuel_rate(heat_w))
-    print("generator_efficiency (GEN-01):", generator_efficiency(182.4, 41.7))
-    print("battery_runway (hrs):", battery_runway(500, 72.4, 18.2))
-    print(
-        "weighted_risk_score:",
-        weighted_risk_score(
-            {"fuel": normalize_low_is_bad(13340 / 20000 * 100, 30, 15), "power": normalize_high_is_bad(73.0, 75, 90)},
-            {"fuel": 0.6, "power": 0.4},
-        ),
-    )
-    print("forecast (linear):", forecast_linear_regression([18.7, 18.3, 17.9, 17.4], periods_ahead=3))
-    print("meltwater_energy_cost (kWh per 100kg):", meltwater_energy_cost(100, start_temp_c=-20))
