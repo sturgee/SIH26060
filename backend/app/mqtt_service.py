@@ -1,34 +1,28 @@
 import asyncio
 import json
-from collections import deque
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Optional
 
 import aiomqtt
 from sqlalchemy import select
 
+from .ai_anomaly import detector
+from .ai_control import control_agent
 from .database import async_session
 from .forecasting import build_predictions
 from .models import TelemetryDocument, TelemetryValue
 from .websocket_manager import ConnectionManager
-from .supplies import add_supply_forecast
-
 
 MQTT_HOST = "localhost"
 MQTT_TOPIC = "antarctic/station/BHARATI"
 HISTORY_LIMIT = 200
-WIND_HISTORY_LIMIT = 12
-wind_history: deque[float] = deque(maxlen=WIND_HISTORY_LIMIT)
 
 
 def flatten_json(
     value: Any,
     path: str = "",
 ):
-    """
-    Converts nested JSON into queryable key/value records.
-    """
-
+    """Converts nested JSON into queryable key/value records."""
     if isinstance(value, dict):
         for key, child in value.items():
             child_path = f"{path}.{key}" if path else key
@@ -57,7 +51,7 @@ def flatten_json(
             "value_text": value if value_type == "string" else None,
             "value_number": (
                 float(value)
-                if value_type == "number"
+                if value_type == "number" and value is not None
                 else None
             ),
             "value_boolean": (
@@ -115,13 +109,25 @@ async def save_telemetry(payload: dict[str, Any]) -> None:
         session.add(document)
         await session.flush()
 
-        for item in flatten_json(payload):
+        flattened = list(flatten_json(payload))
+        for item in flattened:
             session.add(
                 TelemetryValue(
                     document_id=document.id,
                     **item,
                 )
             )
+
+        # Keep a normalized numeric time-series copy for range queries.
+        from .models import TelemetryMeasurement
+        from .time_series import METRICS
+        for item in flattened:
+            if item.get("value_type") == "number" and item.get("value_number") is not None and item["path"] in {p for p, _ in METRICS.values()}:
+                unit = next((u for p, u in METRICS.values() if p == item["path"]), "")
+                session.add(TelemetryMeasurement(
+                    timestamp=timestamp, station_id=station_id, metric=item["path"],
+                    value=float(item["value_number"]), unit=unit, source="mqtt"
+                ))
 
         await session.commit()
 
@@ -168,45 +174,39 @@ async def load_numeric_history(
     return history
 
 
-def add_environment_summary(payload: dict[str, Any]) -> dict[str, Any]:
-    environment = payload.setdefault("environment", {})
-    wind_data = environment.get("wind_speed")
-
-    if isinstance(wind_data, dict):
-        wind_value = wind_data.get("value")
-    else:
-        wind_value = wind_data
-
-    if isinstance(wind_value, (int, float)) and not isinstance(wind_value, bool):
-        wind_history.append(float(wind_value))
-
-    if wind_history:
-        environment["average_wind_speed"] = {
-            "value": round(
-                sum(wind_history) / len(wind_history),
-                1,
-            ),
-            "unit": "km/h",
-            "samples": len(wind_history),
-        }
-
-    return payload
-
-
 async def process_telemetry(
     payload: dict[str, Any],
+    client: Optional[aiomqtt.Client] = None,
 ) -> dict[str, Any]:
-    payload = add_environment_summary(payload)
-    payload = add_supply_forecast(payload)
-
     await save_telemetry(payload)
 
     station_id = get_station_id(payload)
     history = await load_numeric_history(station_id)
+
     predictions = build_predictions(history, steps=5)
+
+    if not detector.is_fitted:
+        await detector.train()
+    anomaly_report = detector.detect(payload)
+
+    ai_actions = control_agent.evaluate_optimal_setpoints(payload, predictions)
+
+    # Closed-Loop Actuation: Publish control commands back to MQTT if active
+    actuator_cmds = ai_actions.get("actuator_commands", [])
+    if client and actuator_cmds:
+        control_payload = json.dumps({
+            "station_id": station_id,
+            "timestamp": parse_timestamp(None).isoformat(),
+            "commands": actuator_cmds
+        })
+        await client.publish("antarctic/station/BHARATI/control", control_payload)
 
     outgoing_payload = dict(payload)
     outgoing_payload["predictions"] = predictions
+    outgoing_payload["ai_insights"] = {
+        "anomaly": anomaly_report,
+        "prescriptive_control": ai_actions
+    }
 
     return outgoing_payload
 
@@ -223,12 +223,17 @@ async def mqtt_listener(manager: ConnectionManager) -> None:
                 )
 
                 async for message in client.messages:
-                    raw_payload = message.payload.decode("utf-8")
-                    payload = json.loads(raw_payload)
-                    payload = add_environment_summary(payload)
+                    raw_payload = message.payload.decode()
 
                     try:
-                        outgoing_payload = await process_telemetry(payload)
+                        data = json.loads(raw_payload)
+                    except json.JSONDecodeError:
+                        print("Failed to decode JSON payload")
+                        continue
+
+                    try:
+                        # Pass client to enable closed-loop control publishing
+                        outgoing_payload = await process_telemetry(data, client=client)
                     except Exception as error:
                         print(f"Failed to process telemetry: {error}")
                         continue
@@ -248,4 +253,8 @@ async def mqtt_listener(manager: ConnectionManager) -> None:
                 f"MQTT connection error: {error}. "
                 "Retrying in 5 seconds..."
             )
+            await asyncio.sleep(5)
+
+        except Exception as error:
+            print(f"MQTT listener error: {error}. Retrying in 5 seconds...", flush=True)
             await asyncio.sleep(5)

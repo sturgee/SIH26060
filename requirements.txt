@@ -1,7 +1,21 @@
+# Web Framework & Server
 fastapi
 uvicorn[standard]
 pydantic
-paho-mqtt
-aiomqtt
+
+# Database & Async ORM
 sqlalchemy
 aiosqlite
+
+# MQTT Communication
+aiomqtt
+paho-mqtt
+
+# Machine Learning, Physics Models & Analytics
+torch
+scikit-learn
+numpy
+
+# LLM & Copilot SDK
+google-genai
+python-dotenv
