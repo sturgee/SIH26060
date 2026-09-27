@@ -9,8 +9,8 @@ from pathlib import Path
 
 import paho.mqtt.client as mqtt
 
-
 RUNNING = True
+CONTROL_TOPIC = "antarctic/station/BHARATI/control"
 
 
 def clamp(value, minimum, maximum):
@@ -27,7 +27,11 @@ def perturb(value, amount, minimum=None, maximum=None):
 
 
 def utc_timestamp():
-    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    return (
+        datetime.now(timezone.utc)
+        .isoformat(timespec="seconds")
+        .replace("+00:00", "Z")
+    )
 
 
 def simulate(state, elapsed, timers):
@@ -41,7 +45,11 @@ def simulate(state, elapsed, timers):
     for generator in energy["generators"]:
         if generator["status"] == "running":
             generator["output_power"] = round(
-                clamp(perturb(generator["output_power"], 1.8), 120, generator["rated_power"]),
+                clamp(
+                    perturb(generator["output_power"], 1.8),
+                    120,
+                    generator["rated_power"],
+                ),
                 1,
             )
             generator["load_percent"] = round(
@@ -76,7 +84,8 @@ def simulate(state, elapsed, timers):
             perturb(environment["wind_speed"]["value"], 1.5, 0, 120), 1
         )
         environment["wind_direction"]["value"] = round(
-            (environment["wind_direction"]["value"] + random.uniform(-8, 8)) % 360,
+            (environment["wind_direction"]["value"] + random.uniform(-8, 8))
+            % 360,
             1,
         )
         timers["wind"] = 0
@@ -84,10 +93,14 @@ def simulate(state, elapsed, timers):
     # Temperature, pressure, solar irradiance, and visibility change every minute.
     if timers["weather"] >= 60:
         environment["external_temperature"]["value"] = round(
-            perturb(environment["external_temperature"]["value"], 0.4, -60, 5), 1
+            perturb(environment["external_temperature"]["value"], 0.4, -60, 5),
+            1,
         )
         environment["atmospheric_pressure"]["value"] = round(
-            perturb(environment["atmospheric_pressure"]["value"], 1.2, 900, 1050), 1
+            perturb(
+                environment["atmospheric_pressure"]["value"], 1.2, 900, 1050
+            ),
+            1,
         )
         environment["solar_irradiance"]["value"] = round(
             perturb(environment["solar_irradiance"]["value"], 15, 0, 1200), 1
@@ -103,22 +116,34 @@ def simulate(state, elapsed, timers):
             perturb(environment["relative_humidity"]["value"], 2, 20, 100), 1
         )
         internal["main_building"]["humidity"]["value"] = round(
-            perturb(internal["main_building"]["humidity"]["value"], 1.5, 20, 80), 1
+            perturb(
+                internal["main_building"]["humidity"]["value"], 1.5, 20, 80
+            ),
+            1,
         )
         for zone in internal["main_building"]["zones"]:
             zone["humidity"] = round(perturb(zone["humidity"], 1.5, 20, 90), 1)
         for shed in internal["sheds"]:
-            shed["humidity"] = round(perturb(shed["humidity"], 1.5, 20, 90), 1)
+            shed["humidity"] = round(
+                perturb(shed["humidity"], 1.5, 20, 90), 1
+            )
         timers["humidity"] = 0
 
     # Internal temperatures change every thirty seconds.
     if timers["indoor_temperature"] >= 30:
         for zone in internal["main_building"]["zones"]:
-            zone["temperature"] = round(perturb(zone["temperature"], 0.15, 10, 30), 1)
+            zone["temperature"] = round(
+                perturb(zone["temperature"], 0.15, 10, 30), 1
+            )
         for shed in internal["sheds"]:
-            shed["temperature"] = round(perturb(shed["temperature"], 0.2, -30, 20), 1)
+            shed["temperature"] = round(
+                perturb(shed["temperature"], 0.2, -30, 20), 1
+            )
         internal["main_building"]["average_temperature"]["value"] = round(
-            sum(zone["temperature"] for zone in internal["main_building"]["zones"])
+            sum(
+                zone["temperature"]
+                for zone in internal["main_building"]["zones"]
+            )
             / len(internal["main_building"]["zones"]),
             1,
         )
@@ -139,15 +164,21 @@ def simulate(state, elapsed, timers):
     if timers["supplies"] >= 3600:
         water = state["water"]
         water["fresh_water"]["remaining"] = round(
-            max(0, water["fresh_water"]["remaining"]
-                - water["fresh_water"]["consumption_rate"] / 24),
+            max(
+                0,
+                water["fresh_water"]["remaining"]
+                - water["fresh_water"]["consumption_rate"] / 24,
+            ),
             2,
         )
 
         logistics_fuel = state["logistics"]["fuel"]
         logistics_fuel["total_remaining"] = round(
-            max(0, logistics_fuel["total_remaining"]
-                - logistics_fuel["daily_consumption"] / 24),
+            max(
+                0,
+                logistics_fuel["total_remaining"]
+                - logistics_fuel["daily_consumption"] / 24,
+            ),
             2,
         )
         timers["supplies"] = 0
@@ -164,13 +195,18 @@ def simulate(state, elapsed, timers):
         generator["output_power"] for generator in energy["generators"]
     )
     battery = energy["battery"]
-    battery["discharge_rate"] = round(max(0, total_power - generator_output), 1)
+    battery["discharge_rate"] = round(
+        max(0, total_power - generator_output), 1
+    )
     battery["charge_rate"] = round(max(0, generator_output - total_power), 1)
     battery["state_of_charge"] = round(
         clamp(
             battery["state_of_charge"]
-            + (battery["charge_rate"] - battery["discharge_rate"]) * elapsed
-            / 3600 / battery["capacity"] * 100,
+            + (battery["charge_rate"] - battery["discharge_rate"])
+            * elapsed
+            / 3600
+            / battery["capacity"]
+            * 100,
             0,
             100,
         ),
@@ -187,7 +223,9 @@ def on_signal(_signal, _frame):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Antarctic station MQTT simulator")
+    parser = argparse.ArgumentParser(
+        description="Antarctic station MQTT simulator"
+    )
     parser.add_argument("--file", default="format.json")
     parser.add_argument("--host", default="localhost")
     parser.add_argument("--port", type=int, default=1883)
@@ -203,13 +241,53 @@ def main():
     def on_connect(_client, _userdata, _flags, _reason_code, _properties=None):
         nonlocal connected
         connected = True
+        _client.subscribe(CONTROL_TOPIC)
+        print(
+            f"Subscribed to control actuation topic: '{CONTROL_TOPIC}'",
+            flush=True,
+        )
 
-    def on_disconnect(_client, _userdata, _disconnect_flags=None, _reason_code=None, _properties=None):
+    def on_disconnect(
+        _client,
+        _userdata,
+        _disconnect_flags=None,
+        _reason_code=None,
+        _properties=None,
+    ):
         nonlocal connected
         connected = False
 
+    def on_message(_client, _userdata, msg):
+        try:
+            command_data = json.loads(msg.payload.decode("utf-8"))
+            commands = command_data.get("commands", [])
+            for cmd in commands:
+                actuator = cmd.get("actuator")
+                target = cmd.get("target_value")
+
+                if actuator == "hvac_thermal_loop":
+                    print(
+                        f"[ACTUATOR] Lowering HVAC thermal setpoint to {target}°C",
+                        flush=True,
+                    )
+                    for zone in state["internal_conditions"]["main_building"][
+                        "zones"
+                    ]:
+                        zone["temperature"] = float(target)
+
+                elif actuator == "generator_balancer":
+                    print(
+                        "[ACTUATOR] Enabling ECO_STAGGERED generator mode",
+                        flush=True,
+                    )
+                    for gen in state["energy"]["generators"]:
+                        gen["output_power"] = min(gen["output_power"], 140.0)
+        except Exception as e:
+            print(f"Error handling actuation command: {e}", flush=True)
+
     client.on_connect = on_connect
     client.on_disconnect = on_disconnect
+    client.on_message = on_message
     client.loop_start()
 
     timers = {

@@ -32,6 +32,58 @@
 
     <!-- Main Core Dashboard Space -->
     <main class="dashboard-container">
+    <section class="dashboard-card ai-copilot-card" style="margin-top: 1rem;">
+    <div class="card-title-row">
+        <h2 class="card-title">💬 Conversational Telemetry Assistant</h2>
+        <span class="badge">Gemini 2.5 RAG</span>
+    </div>
+
+    <div id="copilot-chat-history" style="min-height: 180px; max-height: 250px; overflow-y: auto; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+        <div class="copilot-msg msg-assistant">
+            <span class="msg-sender">🤖 Station AI</span>
+            <p class="msg-text">Ask me anything about generator load, room temperatures, or historical fuel runway.</p>
+        </div>
+    </div>
+
+    <div style="display: flex; gap: 0.5rem;">
+        <input id="copilot-input" type="text" placeholder="e.g. What is our current fuel runway if generator load remains high?" style="flex: 1; padding: 0.65rem; border: 1px solid #cbd5e1; border-radius: 6px;" onkeypress="if(event.key === 'Enter') sendCopilotQuery()">
+        <button onclick="sendCopilotQuery()" style="background: #0f172a; color: #fff; border: none; padding: 0.65rem 1.25rem; border-radius: 6px; cursor: pointer; font-weight: 600;">Ask Copilot</button>
+    </div>
+</section>
+<section class="dashboard-card ai-copilot-card">
+    <div class="card-title-row">
+        <h2 class="card-title">🤖 Station AI Copilot</h2>
+        <span id="ai-anomaly-status" class="badge badge-success">INITIALIZING</span>
+    </div>
+
+    <div class="ai-copilot-grid">
+        <!-- ML Anomaly Detection Column -->
+        <div class="ai-card-col">
+            <h3 class="ai-subhead">ML Anomaly Detector (Isolation Forest)</h3>
+            <div class="ai-metric-row">
+                <span class="ai-label">Anomaly Score:</span>
+                <span id="ai-anomaly-score" class="ai-value">0.0000</span>
+            </div>
+            <div class="ai-metric-row">
+                <span class="ai-label">Diagnostic Recommendation:</span>
+                <span id="ai-anomaly-rec" class="ai-value-text">Monitoring operational envelope...</span>
+            </div>
+        </div>
+
+        <!-- Prescriptive Control Agent Column -->
+        <div class="ai-card-col">
+            <h3 class="ai-subhead">Prescriptive Control Agent</h3>
+            <div class="ai-metric-row">
+                <span class="ai-label">Projected Fuel Savings:</span>
+                <span id="ai-fuel-savings" class="ai-value-highlight">0.00 L/h</span>
+            </div>
+            <h4 class="ai-list-head">Suggested Setpoint Actions:</h4>
+            <ul id="ai-actions-list" class="ai-actions-list">
+                <li class="ai-action-item muted">No prescriptive actions required at this time.</li>
+            </ul>
+        </div>
+    </div>
+</section>
         
         <!-- Live System Metric Feeds -->
         <section class="dashboard-card live-feed-card">

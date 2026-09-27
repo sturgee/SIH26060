@@ -149,20 +149,6 @@ function loadInitialMessage(message) {
     redrawCharts();
 }
 
-function handleTelemetry(payload) {
-    if (!payload || typeof payload !== "object") return;
-    if (payload.type === "initial") {
-        loadInitialMessage(payload);
-        appendLog("Historical telemetry loaded. Live stream ready.");
-        return;
-    }
-    if (chartMode === "history") return;
-    const metrics = getMetrics(payload);
-    addMetrics(metrics, true);
-    if (payload?.station?.id) setText("station-id", payload.station.id);
-    if (payload?.predictions?.series) renderPredictions(payload.predictions.series);
-}
-
 function renderPredictions(series) {
     const target = $("prediction-status");
     if (!target) return;
@@ -349,6 +335,80 @@ function formatDuration(seconds) {
     if (seconds < 86400) return `${Math.round(seconds/3600)} hr`;
     return `${Math.round(seconds/86400)} day`;
 }
+/* Added this logic inside handleTelemetry function in script.js */
+function handleTelemetry(payload) {
+    if (!payload || typeof payload !== "object") return;
+    if (payload.type === "initial") {
+        loadInitialMessage(payload);
+        appendLog("Historical telemetry loaded. Live stream ready.");
+        return;
+    }
+    if (chartMode === "history") return;
+    
+    const metrics = getMetrics(payload);
+    addMetrics(metrics, true);
+    
+    if (payload?.station?.id) setText("station-id", payload.station.id);
+    if (payload?.predictions?.series) renderPredictions(payload.predictions.series);
+
+    // 🚀 NEW: Render AI Insights if present in payload
+    if (payload?.ai_insights) {
+        renderAIInsights(payload.ai_insights);
+    }
+}
+
+// 🚀 NEW: AI Copilot Rendering Function
+function renderAIInsights(ai) {
+    if (!ai) return;
+
+    // 1. Render ML Anomaly Detection Data
+    const anomaly = ai.anomaly || {};
+    const anomalyStatusEl = $("ai-anomaly-status");
+    const anomalyScoreEl = $("ai-anomaly-score");
+    const anomalyRecEl = $("ai-anomaly-rec");
+
+    if (anomalyStatusEl) {
+        anomalyStatusEl.textContent = anomaly.status || "NORMAL";
+        anomalyStatusEl.className = anomaly.is_anomaly ? "badge badge-danger" : "badge badge-success";
+    }
+    if (anomalyScoreEl) {
+        anomalyScoreEl.textContent = anomaly.anomaly_score !== undefined ? anomaly.anomaly_score : "--";
+    }
+    if (anomalyRecEl) {
+        anomalyRecEl.textContent = anomaly.recommendation || "Monitoring nominal";
+    }
+
+    // 2. Render Prescriptive AI Control Data
+    const control = ai.prescriptive_control || {};
+    const savingsEl = $("ai-fuel-savings");
+    const actionsContainer = $("ai-actions-list");
+
+    if (savingsEl) {
+        savingsEl.textContent = `${control.projected_fuel_savings_lph || 0} L/h`;
+    }
+
+    if (actionsContainer) {
+        actionsContainer.innerHTML = "";
+        const actions = control.suggested_actions || [];
+
+        if (actions.length === 0) {
+            actionsContainer.innerHTML = `<li class="ai-action-item muted">No prescriptive actions required at this time.</li>`;
+        } else {
+            actions.forEach(action => {
+                const li = document.createElement("li");
+                li.className = "ai-action-item";
+                li.innerHTML = `
+                    <div class="ai-action-header">
+                        <strong>Target: ${escapeHtml(action.target)}</strong>
+                        <span class="ai-action-setpoint">Set to ${action.recommended_setpoint_c}°C</span>
+                    </div>
+                    <p class="ai-action-reason">${escapeHtml(action.reason)}</p>
+                `;
+                actionsContainer.appendChild(li);
+            });
+        }
+    }
+}
 
 function returnToLive() {
     ++historicalRequest;
@@ -358,6 +418,63 @@ function returnToLive() {
     updateConnection(socket?.readyState === WebSocket.OPEN);
     appendLog("Returned to live telemetry mode.");
     loadLatestFallback();
+}
+// Append Copilot Chat Logic to script.js
+
+async function sendCopilotQuery() {
+    const inputEl = $("copilot-input");
+    const chatContainer = $("copilot-chat-history");
+    if (!inputEl || !chatContainer) return;
+
+    const query = inputEl.value.trim();
+    if (!query) return;
+
+    // Render User Message
+    appendChatMessage("operator", query);
+    inputEl.value = "";
+
+    // Show Loading Bubble
+    const loadingId = appendChatMessage("assistant", "Analyzing real-time station telemetry...");
+
+    try {
+        const response = await fetch("/api/copilot/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: query, station_id: "BHARATI" })
+        });
+
+        const data = await response.json();
+        
+        // Remove loading message and append Gemini response
+        const loadingEl = $(loadingId);
+        if (loadingEl) loadingEl.remove();
+
+        if (response.ok) {
+            appendChatMessage("assistant", data.answer);
+        } else {
+            appendChatMessage("assistant", `⚠️ Error: ${data.detail || "Failed to contact Copilot."}`);
+        }
+    } catch (error) {
+        appendChatMessage("assistant", "⚠️ Network Error: Unable to reach Copilot service.");
+    }
+}
+
+function appendChatMessage(sender, text) {
+    const chatContainer = $("copilot-chat-history");
+    if (!chatContainer) return;
+
+    const msgId = `msg-${Date.now()}`;
+    const msgDiv = document.createElement("div");
+    msgDiv.id = msgId;
+    msgDiv.className = `copilot-msg msg-${sender}`;
+    msgDiv.innerHTML = `
+        <span class="msg-sender">${sender === "operator" ? "👤 Operator" : "🤖 Station AI"}</span>
+        <p class="msg-text">${escapeHtml(text)}</p>
+    `;
+    
+    chatContainer.appendChild(msgDiv);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    return msgId;
 }
 
 document.addEventListener("DOMContentLoaded", () => {

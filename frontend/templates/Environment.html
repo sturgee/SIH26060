@@ -36,6 +36,24 @@
 
     <!-- Main Content -->
     <main class="dashboard-container">
+        <section class="dashboard-card ai-copilot-card" style="margin-top: 1rem;">
+    <div class="card-title-row">
+        <h2 class="card-title">💬 Conversational Telemetry Assistant</h2>
+        <span class="badge">Gemini 2.5 RAG</span>
+    </div>
+
+    <div id="copilot-chat-history" style="min-height: 180px; max-height: 250px; overflow-y: auto; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+        <div class="copilot-msg msg-assistant">
+            <span class="msg-sender">🤖 Station AI</span>
+            <p class="msg-text">Ask me anything about generator load, room temperatures, or historical fuel runway.</p>
+        </div>
+    </div>
+
+    <div style="display: flex; gap: 0.5rem;">
+        <input id="copilot-input" type="text" placeholder="e.g. What is our current fuel runway if generator load remains high?" style="flex: 1; padding: 0.65rem; border: 1px solid #cbd5e1; border-radius: 6px;" onkeypress="if(event.key === 'Enter') sendCopilotQuery()">
+        <button onclick="sendCopilotQuery()" style="background: #0f172a; color: #fff; border: none; padding: 0.65rem 1.25rem; border-radius: 6px; cursor: pointer; font-weight: 600;">Ask Copilot</button>
+    </div>
+</section>
         
         <!-- Live Metrics Box -->
         <section class="dashboard-card live-feed-card">

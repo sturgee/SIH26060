@@ -1,16 +1,17 @@
 import asyncio
 import json
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Optional
 
 import aiomqtt
 from sqlalchemy import select
 
+from .ai_anomaly import detector
+from .ai_control import control_agent
 from .database import async_session
 from .forecasting import build_predictions
 from .models import TelemetryDocument, TelemetryValue
 from .websocket_manager import ConnectionManager
-
 
 MQTT_HOST = "localhost"
 MQTT_TOPIC = "antarctic/station/BHARATI"
@@ -21,10 +22,7 @@ def flatten_json(
     value: Any,
     path: str = "",
 ):
-    """
-    Converts nested JSON into queryable key/value records.
-    """
-
+    """Converts nested JSON into queryable key/value records."""
     if isinstance(value, dict):
         for key, child in value.items():
             child_path = f"{path}.{key}" if path else key
@@ -53,7 +51,7 @@ def flatten_json(
             "value_text": value if value_type == "string" else None,
             "value_number": (
                 float(value)
-                if value_type == "number"
+                if value_type == "number" and value is not None
                 else None
             ),
             "value_boolean": (
@@ -121,8 +119,8 @@ async def save_telemetry(payload: dict[str, Any]) -> None:
             )
 
         # Keep a normalized numeric time-series copy for range queries.
-        from .time_series import METRICS
         from .models import TelemetryMeasurement
+        from .time_series import METRICS
         for item in flattened:
             if item.get("value_type") == "number" and item.get("value_number") is not None and item["path"] in {p for p, _ in METRICS.values()}:
                 unit = next((u for p, u in METRICS.values() if p == item["path"]), "")
@@ -178,15 +176,37 @@ async def load_numeric_history(
 
 async def process_telemetry(
     payload: dict[str, Any],
+    client: Optional[aiomqtt.Client] = None,
 ) -> dict[str, Any]:
     await save_telemetry(payload)
 
     station_id = get_station_id(payload)
     history = await load_numeric_history(station_id)
+
     predictions = build_predictions(history, steps=5)
+
+    if not detector.is_fitted:
+        await detector.train()
+    anomaly_report = detector.detect(payload)
+
+    ai_actions = control_agent.evaluate_optimal_setpoints(payload, predictions)
+
+    # Closed-Loop Actuation: Publish control commands back to MQTT if active
+    actuator_cmds = ai_actions.get("actuator_commands", [])
+    if client and actuator_cmds:
+        control_payload = json.dumps({
+            "station_id": station_id,
+            "timestamp": parse_timestamp(None).isoformat(),
+            "commands": actuator_cmds
+        })
+        await client.publish("antarctic/station/BHARATI/control", control_payload)
 
     outgoing_payload = dict(payload)
     outgoing_payload["predictions"] = predictions
+    outgoing_payload["ai_insights"] = {
+        "anomaly": anomaly_report,
+        "prescriptive_control": ai_actions
+    }
 
     return outgoing_payload
 
@@ -212,7 +232,8 @@ async def mqtt_listener(manager: ConnectionManager) -> None:
                         continue
 
                     try:
-                        outgoing_payload = await process_telemetry(data)
+                        # Pass client to enable closed-loop control publishing
+                        outgoing_payload = await process_telemetry(data, client=client)
                     except Exception as error:
                         print(f"Failed to process telemetry: {error}")
                         continue
@@ -235,7 +256,5 @@ async def mqtt_listener(manager: ConnectionManager) -> None:
             await asyncio.sleep(5)
 
         except Exception as error:
-            # Keep the WebSocket/MQTT pipeline alive if a transient client or
-            # broker error is raised outside aiomqtt.MqttError.
             print(f"MQTT listener error: {error}. Retrying in 5 seconds...", flush=True)
             await asyncio.sleep(5)
